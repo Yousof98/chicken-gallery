@@ -23,6 +23,15 @@ export default function Gallery() {
     Promise.all([api.getImages(), api.getCategories(), api.getSettings()])
       .then(([imgs, cats, sets]) => { setImages(imgs); setCategories(cats); setSettings(sets); setLoading(false); })
       .catch(() => setLoading(false));
+
+    // Poll settings every 5 seconds for instant maintenance mode toggle on active devices
+    const interval = setInterval(() => {
+      api.getSettings()
+        .then(newSets => setSettings(prev => JSON.stringify(prev) !== JSON.stringify(newSets) ? newSets : prev))
+        .catch(() => {});
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const categoryNames = ['الكل', ...categories.map(c => c.name)];
