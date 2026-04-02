@@ -27,6 +27,7 @@
     "vite": "^6.2.0"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260402.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",

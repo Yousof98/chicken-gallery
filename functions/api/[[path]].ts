@@ -5,6 +5,8 @@ export interface Env {
   TURSO_AUTH_TOKEN: string;
 }
 
+type PagesFunction<E = unknown> = (context: { request: Request; env: E; params: Record<string, string> }) => Response | Promise<Response>;
+
 export function getDB(env: Env) {
   return createClient({
     url: env.TURSO_DATABASE_URL,
