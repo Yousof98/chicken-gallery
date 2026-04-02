@@ -5,6 +5,7 @@ export interface ImageItem {
   title: string;
   category: string;
   story: string;
+  likes?: number;
 }
 
 export interface CategoryItem {
@@ -47,6 +48,11 @@ export const api = {
   async deleteImage(id: number): Promise<void> {
     const res = await fetch(`/api/images/${id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('Failed to delete');
+  },
+  async likeImage(id: number): Promise<{ success: boolean; likes: number }> {
+    const res = await fetch(`/api/images/${id}/like`, { method: 'POST' });
+    if (!res.ok) throw new Error('Failed to like image');
+    return res.json();
   },
   async login(password: string): Promise<boolean> {
     const res = await fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) });

@@ -18,9 +18,16 @@ function json(data: any, status = 200) {
 
 async function ensureTables(env: Env) {
   const db = getDB(env);
-  await db.execute(`CREATE TABLE IF NOT EXISTS images (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT NOT NULL, title TEXT NOT NULL, category TEXT NOT NULL, story TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
+  await db.execute(`CREATE TABLE IF NOT EXISTS images (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT NOT NULL, title TEXT NOT NULL, category TEXT NOT NULL, story TEXT NOT NULL, likes INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
   await db.execute(`CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, sort_order INTEGER DEFAULT 0)`);
   await db.execute(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)`);
+
+  // Simple migration strategy for adding likes column to existing DB
+  try {
+    await db.execute('ALTER TABLE images ADD COLUMN likes INTEGER DEFAULT 0');
+  } catch (e: any) {
+    // If it fails, the column likely already exists. Safe to ignore.
+  }
 
   const catCount = await db.execute('SELECT COUNT(*) as count FROM categories');
   if (Number(catCount.rows[0].count) === 0) {
@@ -141,6 +148,18 @@ async function handleAPI(request: Request, env: Env): Promise<Response> {
         return json((await db.execute({ sql: 'SELECT * FROM images WHERE id = ?', args: [id] })).rows[0]);
       }
       if (method === 'DELETE') { await db.execute({ sql: 'DELETE FROM images WHERE id = ?', args: [id] }); return json({ success: true }); }
+    }
+
+    const likeM = path.match(/^\/api\/images\/(\d+)\/like$/);
+    if (likeM && method === 'POST') {
+      const id = Number(likeM[1]);
+      // Verify image exists
+      const check = await db.execute({ sql: 'SELECT id, likes FROM images WHERE id = ?', args: [id] });
+      if (check.rows.length === 0) return json({ error: 'Image not found' }, 404);
+      
+      const currentLikes = Number(check.rows[0].likes) || 0;
+      await db.execute({ sql: 'UPDATE images SET likes = ? WHERE id = ?', args: [currentLikes + 1, id] });
+      return json({ success: true, likes: currentLikes + 1 });
     }
 
     return json({ error: 'Not found' }, 404);

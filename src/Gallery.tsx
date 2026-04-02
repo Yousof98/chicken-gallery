@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform, useSpring } from 'motion/react';
-import { X, Image as ImageIcon, Quote, Download, Monitor, Smartphone, LayoutGrid, Maximize, ChevronDown, Loader2, Moon } from 'lucide-react';
+import { X, Image as ImageIcon, Quote, Download, Monitor, Smartphone, LayoutGrid, Maximize, ChevronDown, Loader2, Moon, Heart, Trophy } from 'lucide-react';
 import { api, type ImageItem, type SiteSettings, type CategoryItem } from './api';
 
 export default function Gallery() {
@@ -14,6 +14,12 @@ export default function Gallery() {
   const [selectedImage, setSelectedImage] = useState<ImageItem | null>(null);
   const [isDownloading, setIsDownloading] = useState<number | null>(null);
   const [dimensions, setDimensions] = useState<Record<number, { w: number; h: number }>>({});
+  const [likedImages, setLikedImages] = useState<number[]>(() => {
+    try { const saved = localStorage.getItem('chicken_gallery_likes'); return saved ? JSON.parse(saved) : []; }
+    catch { return []; }
+  });
+
+  useEffect(() => { localStorage.setItem('chicken_gallery_likes', JSON.stringify(likedImages)); }, [likedImages]);
 
   const { scrollYProgress, scrollY } = useScroll();
   const storyY = useTransform(scrollY, [0, 800], [0, 200]);
@@ -55,6 +61,25 @@ export default function Gallery() {
     }
     return matchCategory && matchDevice;
   });
+
+  const handleLike = async (e: React.MouseEvent, imgId: number) => {
+    e.stopPropagation();
+    if (likedImages.includes(imgId)) return;
+    
+    // Optimistic update
+    setLikedImages(p => [...p, imgId]);
+    setImages(p => p.map(img => img.id === imgId ? { ...img, likes: (img.likes || 0) + 1 } : img));
+    
+    try {
+      const res = await api.likeImage(imgId);
+      setImages(p => p.map(img => img.id === imgId ? { ...img, likes: res.likes } : img));
+    } catch (err) {
+      setLikedImages(p => p.filter(id => id !== imgId));
+      setImages(p => p.map(img => img.id === imgId ? { ...img, likes: Math.max(0, (img.likes || 0) - 1) } : img));
+    }
+  };
+
+  const topLikedImages = [...images].filter(img => (img.likes || 0) > 0 && img.category.includes(mainView === 'avatars' ? 'افتار' : '')).sort((a, b) => (b.likes || 0) - (a.likes || 0)).slice(0, 5);
 
   const handleDownload = async (e: React.MouseEvent, img: ImageItem) => {
     e.stopPropagation();
@@ -194,6 +219,36 @@ export default function Gallery() {
         </div>
       </div>
 
+      {/* Top 5 Most Liked */}
+      <AnimatePresence mode="popLayout">
+        {topLikedImages.length > 0 && filter === 'الكل' && deviceFilter === 'الكل' && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="w-full max-w-7xl mx-auto px-4 md:px-12 mb-8 md:mb-12 overflow-hidden">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-2 px-2">
+                <Trophy className="w-5 h-5 md:w-6 md:h-6 text-amber-400" />
+                <h3 className="text-lg md:text-xl font-bold text-white">الأكثر إعجاباً</h3>
+              </div>
+              <div className="flex flex-nowrap overflow-x-auto hide-scrollbar gap-3 md:gap-5 pb-4 snap-x">
+                {topLikedImages.map((img, index) => (
+                  <motion.div key={'top-'+img.id} onClick={() => setSelectedImage(img)} className={`relative shrink-0 snap-start cursor-pointer overflow-hidden border border-white/10 shadow-xl group bg-zinc-900/50 ${mainView === 'wallpapers' ? 'w-40 md:w-56 aspect-[3/4] rounded-2xl md:rounded-3xl' : 'w-32 md:w-40 md:w-48 aspect-square rounded-[30%] md:rounded-[40%]'}`}>
+                    <img src={img.url} alt={img.title} className="w-full h-full object-cover md:group-hover:scale-110 transition-transform duration-700" loading="lazy" />
+                    <div className="absolute inset-x-0 bottom-0 top-1/2 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-3 md:p-4">
+                      {index === 0 && <div className="absolute top-2 right-2 bg-amber-400 text-amber-950 text-[9px] md:text-[11px] font-extrabold px-2 py-0.5 rounded-full shadow-lg flex items-center gap-1 z-10"><Trophy size={10} className="md:w-3 md:h-3" /> المركز الأول</div>}
+                      <div className={`flex items-end justify-between pointer-events-none mb-1 ${mainView === 'avatars' ? 'justify-center mx-auto' : ''}`}>
+                        {mainView === 'wallpapers' && <div className="flex-1 min-w-0 pr-2"><h4 className="text-[11px] md:text-sm font-bold text-white line-clamp-1 drop-shadow-md">{img.title}</h4></div>}
+                        <div className="flex items-center gap-1 text-rose-400 bg-black/40 px-2 py-1 rounded-full backdrop-blur-md shadow-lg shrink-0">
+                          <Heart size={10} className="md:w-3 md:h-3 fill-rose-400" /> <span className="text-[10px] md:text-xs font-bold leading-none">{img.likes}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Gallery Grid */}
       <main className="px-4 md:px-12 max-w-7xl mx-auto pb-20 md:pb-32 relative z-10">
         <motion.div layout className={mainView === 'wallpapers' ? "columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 md:gap-6" : "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-5"}>
@@ -203,14 +258,22 @@ export default function Gallery() {
                 <motion.img layoutId={`img-${img.id}`} src={img.url} alt={img.title} onLoad={(e) => { const t = e.target as HTMLImageElement; setDimensions(p => ({ ...p, [img.id]: { w: t.naturalWidth, h: t.naturalHeight } })); }} className={`w-full object-cover transition-all duration-1000 ease-[cubic-bezier(0.25,1,0.5,1)] md:group-hover:scale-110 md:group-hover:-rotate-1 brightness-90 md:brightness-100 ${mainView === 'wallpapers' ? 'h-auto md:group-hover:brightness-75' : 'h-full md:group-hover:brightness-75'}`} loading="lazy" />
                 <div className={`absolute inset-x-0 bottom-0 top-1/2 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-4 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-500 ease-in-out pointer-events-none ${mainView === 'avatars' ? 'md:p-3' : ''}`}>
                   <div className={`translate-y-0 md:translate-y-6 md:group-hover:translate-y-0 transition-transform duration-500 flex flex-col justify-end h-full`}>
-                    <div className={`flex justify-between items-end pointer-events-auto ${mainView === 'avatars' ? 'mb-1.5' : 'mb-2'}`}>
-                      <div>
-                        {mainView === 'wallpapers' && <h3 className="text-sm md:text-lg font-bold text-white mb-1 drop-shadow-md">{img.title}</h3>}
-                        {mainView === 'wallpapers' && dimensions[img.id] && (<div className="flex items-center gap-1 text-[9px] md:text-[10px] font-mono text-emerald-300 bg-emerald-500/20 px-1.5 py-0.5 rounded border border-emerald-500/30 backdrop-blur-md w-fit"><Maximize size={10} />{dimensions[img.id].w} × {dimensions[img.id].h}</div>)}
+                    <div className={`flex justify-between items-end pointer-events-auto ${mainView === 'avatars' ? 'mb-1.5 justify-center' : 'mb-2'}`}>
+                      {mainView === 'wallpapers' && (
+                        <div>
+                          <h3 className="text-sm md:text-lg font-bold text-white mb-1 drop-shadow-md">{img.title}</h3>
+                          {dimensions[img.id] && (<div className="flex items-center gap-1 text-[9px] md:text-[10px] font-mono text-emerald-300 bg-emerald-500/20 px-1.5 py-0.5 rounded border border-emerald-500/30 backdrop-blur-md w-fit"><Maximize size={10} />{dimensions[img.id].w} × {dimensions[img.id].h}</div>)}
+                        </div>
+                      )}
+                      <div className={`flex items-center gap-2 ${mainView === 'avatars' ? 'mx-auto' : ''}`}>
+                        <button onClick={(e) => handleLike(e, img.id)} className={`flex items-center gap-1.5 backdrop-blur-md transition-all shadow-lg active:scale-95 ${mainView === 'avatars' ? 'px-2.5 py-1.5 md:p-2.5 scale-90 md:scale-100 rounded-full' : 'px-3 py-2 md:p-2.5 rounded-full'} ${likedImages.includes(img.id) ? 'bg-rose-500 text-white' : 'bg-white/10 hover:bg-rose-500/80 text-white'}`} title="إعجاب">
+                          <Heart size={15} className={`md:w-4 md:h-4 ${likedImages.includes(img.id) ? 'fill-white' : ''}`} />
+                          {img.likes! > 0 && <span className="text-[10px] md:text-[11px] font-bold leading-none">{img.likes}</span>}
+                        </button>
+                        <button onClick={(e) => handleDownload(e, img)} className={`p-2 md:p-2.5 bg-white/10 hover:bg-emerald-500 text-white rounded-full backdrop-blur-md transition-all shadow-lg active:scale-95 ${mainView === 'avatars' ? 'scale-90 md:scale-100' : ''}`} title="تحميل">
+                          {isDownloading === img.id ? <div className="w-3.5 h-3.5 md:w-4 md:h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /> : <Download size={15} className="md:w-4 md:h-4" />}
+                        </button>
                       </div>
-                      <button onClick={(e) => handleDownload(e, img)} className={`p-2.5 bg-white/10 hover:bg-emerald-500 text-white rounded-full backdrop-blur-md transition-all shadow-lg active:scale-95 ${mainView === 'avatars' ? 'p-2 scale-90 md:scale-100 mx-auto' : ''}`} title="تحميل">
-                        {isDownloading === img.id ? <div className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /> : <Download size={16} />}
-                      </button>
                     </div>
                     {mainView === 'wallpapers' && <p className="text-[11px] md:text-xs font-medium text-zinc-300 line-clamp-2 md:line-clamp-3 leading-snug drop-shadow-md pointer-events-auto">{img.story}</p>}
                   </div>
@@ -246,10 +309,16 @@ export default function Gallery() {
                       </>)}
                     </div>
                   </div>
-                  <button onClick={(e) => handleDownload(e, selectedImage)} disabled={isDownloading === selectedImage.id} className="flex items-center justify-center w-full md:w-auto gap-2 px-4 py-2 md:px-5 md:py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg md:rounded-xl transition-colors font-bold text-xs md:text-sm shadow-lg shadow-emerald-500/20 disabled:opacity-70 mt-1 md:mt-0">
-                    {isDownloading === selectedImage.id ? <div className="w-4 h-4 md:w-5 md:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Download size={16} className="md:w-[18px] md:h-[18px]" />}
-                    <span>{mainView === 'avatars' ? 'تحميل الأفتار' : 'تحميل الخلفية'}</span>
-                  </button>
+                  <div className="flex items-center gap-2 mt-1 md:mt-0 w-full md:w-auto">
+                    <button onClick={(e) => handleLike(e, selectedImage.id)} className={`flex items-center justify-center gap-2 px-4 py-2 md:px-5 md:py-2.5 rounded-lg md:rounded-xl transition-all font-bold text-xs md:text-sm shadow-lg ${likedImages.includes(selectedImage.id) ? 'bg-rose-500 text-white shadow-rose-500/20' : 'bg-white/10 hover:bg-rose-500/80 text-white border border-white/5'}`}>
+                      <Heart size={16} className={`md:w-[18px] md:h-[18px] ${likedImages.includes(selectedImage.id) ? 'fill-white' : ''}`} />
+                      <span>{selectedImage.likes! > 0 ? selectedImage.likes : 'إعجاب'}</span>
+                    </button>
+                    <button onClick={(e) => handleDownload(e, selectedImage)} disabled={isDownloading === selectedImage.id} className="flex-1 flex items-center justify-center gap-2 px-4 py-2 md:px-5 md:py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg md:rounded-xl transition-colors font-bold text-xs md:text-sm shadow-lg shadow-emerald-500/20 disabled:opacity-70">
+                      {isDownloading === selectedImage.id ? <div className="w-4 h-4 md:w-5 md:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Download size={16} className="md:w-[18px] md:h-[18px]" />}
+                      <span>{mainView === 'avatars' ? 'تحميل الأفتار' : 'تحميل الخلفية'}</span>
+                    </button>
+                  </div>
                 </div>
                 <div className="flex-1 text-xs md:text-sm font-medium text-zinc-300 bg-black/20 p-3 md:p-4 rounded-xl md:rounded-2xl border border-white/5 flex gap-2 md:gap-3 items-start w-full">
                   <Quote className="w-4 h-4 md:w-5 md:h-5 text-zinc-500 shrink-0 rotate-180 mt-0.5" />
