@@ -56,7 +56,17 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
   // ── Image handlers ──
-  const resetForm = () => { setFormUrl(''); setFormTitle(''); setFormCategory(categories[0]?.name || ''); setFormStory(''); setEditingImage(null); };
+  const resetForm = () => { 
+    setFormUrl(''); 
+    setFormTitle(''); 
+    
+    // Default to the first category that matches the current tab type
+    const validCategories = categories.filter(c => activeTab === 'avatars' ? isAvatar(c.name) : !isAvatar(c.name));
+    setFormCategory(validCategories.length > 0 ? validCategories[0].name : '');
+    
+    setFormStory(''); 
+    setEditingImage(null); 
+  };
   const openAddModal = () => { resetForm(); setShowModal(true); };
   const openEditModal = (img: ImageItem) => { setEditingImage(img); setFormUrl(img.url); setFormTitle(img.title); setFormCategory(img.category); setFormStory(img.story); setShowModal(true); };
 
@@ -499,8 +509,11 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                 <div>
                   <label className="text-[11px] md:text-xs text-zinc-400 mb-1.5 block font-semibold">القسم</label>
                   <select value={formCategory} onChange={(e) => setFormCategory(e.target.value)} className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl px-4 py-3 text-[13px] text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 appearance-none cursor-pointer font-medium">
-                    {categories.map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
+                    {categories.filter(c => activeTab === 'avatars' ? isAvatar(c.name) : !isAvatar(c.name)).map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
                   </select>
+                  {categories.filter(c => activeTab === 'avatars' ? isAvatar(c.name) : !isAvatar(c.name)).length === 0 && (
+                    <p className="text-[10px] text-amber-400 mt-1.5 font-medium">تنبيه: لا يوجد قسم مناسب متوفر. يرجى إضافة قسم {activeTab === 'avatars' ? 'يحتوي على كلمة "افتار"' : 'للخلفيات'} أولاً.</p>
+                  )}
                 </div>
                 <div>
                   <label className="text-[11px] md:text-xs text-zinc-400 mb-1.5 block font-semibold">القصة / الوصف</label>
