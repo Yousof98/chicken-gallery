@@ -21,13 +21,11 @@ async function ensureTables(env: Env) {
   await db.execute(`CREATE TABLE IF NOT EXISTS images (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT NOT NULL, title TEXT NOT NULL, category TEXT NOT NULL, story TEXT NOT NULL, likes INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
   await db.execute(`CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, sort_order INTEGER DEFAULT 0)`);
   await db.execute(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)`);
+  await db.execute(`CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY AUTOINCREMENT, image_id INTEGER NOT NULL, author_name TEXT NOT NULL, author_avatar TEXT, content TEXT NOT NULL, is_admin INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(image_id) REFERENCES images(id) ON DELETE CASCADE)`);
 
   // Simple migration strategy for adding likes column to existing DB
-  try {
-    await db.execute('ALTER TABLE images ADD COLUMN likes INTEGER DEFAULT 0');
-  } catch (e: any) {
-    // If it fails, the column likely already exists. Safe to ignore.
-  }
+  try { await db.execute('ALTER TABLE images ADD COLUMN likes INTEGER DEFAULT 0'); } catch (e: any) {}
+  try { await db.execute('ALTER TABLE comments ADD COLUMN is_admin INTEGER DEFAULT 0'); } catch (e: any) {}
 
   const catCount = await db.execute('SELECT COUNT(*) as count FROM categories');
   if (Number(catCount.rows[0].count) === 0) {
@@ -39,7 +37,8 @@ async function ensureTables(env: Env) {
   const setCount = await db.execute('SELECT COUNT(*) as count FROM settings');
   if (Number(setCount.rows[0].count) === 0) {
     const defaults: Record<string, string> = {
-      admin_password: 'admin123', site_title: 'عالم الدجاج', site_subtitle: 'رحلة بصرية',
+      admin_password: 'admin123', admin_name: 'مدير المعرض', admin_avatar: '',
+      site_title: 'عالم الدجاج', site_subtitle: 'رحلة بصرية',
       site_description: 'من أعماق الغابات الاستوائية إلى المزارع الحديثة، رحلة تطور مذهلة لطيور ارتبطت بحياة الإنسان منذ آلاف السنين.',
       hero_image: 'https://images.unsplash.com/photo-1585110396000-c9fd4e4e325c?auto=format&fit=crop&w=1920&q=80',
       gallery_title: 'معرض الخلفيات', gallery_description: 'اختر خلفيتك المفضلة وحملها مجاناً.',
@@ -153,13 +152,45 @@ async function handleAPI(request: Request, env: Env): Promise<Response> {
     const likeM = path.match(/^\/api\/images\/(\d+)\/like$/);
     if (likeM && method === 'POST') {
       const id = Number(likeM[1]);
-      // Verify image exists
+      const body = (await request.json().catch(() => ({}))) as any;
+      const action = body.action === 'unlike' ? -1 : 1;
+      
       const check = await db.execute({ sql: 'SELECT id, likes FROM images WHERE id = ?', args: [id] });
       if (check.rows.length === 0) return json({ error: 'Image not found' }, 404);
       
-      const currentLikes = Number(check.rows[0].likes) || 0;
-      await db.execute({ sql: 'UPDATE images SET likes = ? WHERE id = ?', args: [currentLikes + 1, id] });
-      return json({ success: true, likes: currentLikes + 1 });
+      const currentLikes = Math.max(0, (Number(check.rows[0].likes) || 0) + action);
+      await db.execute({ sql: 'UPDATE images SET likes = ? WHERE id = ?', args: [currentLikes, id] });
+      return json({ success: true, likes: currentLikes });
+    }
+
+    // Comments endpoints
+    if (path === '/api/comments' && method === 'GET') {
+      return json((await db.execute('SELECT c.*, i.title as image_title FROM comments c LEFT JOIN images i ON c.image_id = i.id ORDER BY c.id DESC')).rows);
+    }
+    
+    const commentsForImgM = path.match(/^\/api\/images\/(\d+)\/comments$/);
+    if (commentsForImgM && method === 'GET') {
+      return json((await db.execute({ sql: 'SELECT * FROM comments WHERE image_id = ? ORDER BY id ASC', args: [Number(commentsForImgM[1])] })).rows);
+    }
+    
+    if (commentsForImgM && method === 'POST') {
+      const imgId = Number(commentsForImgM[1]);
+      const { author_name, author_avatar, content, is_admin } = await request.json() as any;
+      if (!author_name || !content) return json({ error: 'الاسم والتعليق مطلوبان' }, 400);
+      const r = await db.execute({ sql: 'INSERT INTO comments (image_id, author_name, author_avatar, content, is_admin) VALUES (?, ?, ?, ?, ?)', args: [imgId, author_name, author_avatar || null, content, is_admin ? 1 : 0] });
+      return json((await db.execute({ sql: 'SELECT * FROM comments WHERE id = ?', args: [r.lastInsertRowid!] })).rows[0], 201);
+    }
+
+    const commentM = path.match(/^\/api\/comments\/(\d+)$/);
+    if (commentM) {
+      const id = Number(commentM[1]);
+      if (method === 'PUT') {
+        const { author_name, author_avatar, content } = await request.json() as any;
+        if (!author_name || !content) return json({ error: 'الاسم والتعليق مطلوبان' }, 400);
+        await db.execute({ sql: 'UPDATE comments SET author_name = ?, author_avatar = ?, content = ? WHERE id = ?', args: [author_name, author_avatar || null, content, id] });
+        return json((await db.execute({ sql: 'SELECT * FROM comments WHERE id = ?', args: [id] })).rows[0]);
+      }
+      if (method === 'DELETE') { await db.execute({ sql: 'DELETE FROM comments WHERE id = ?', args: [id] }); return json({ success: true }); }
     }
 
     return json({ error: 'Not found' }, 404);

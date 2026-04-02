@@ -3,17 +3,18 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Image as ImageIcon, Camera, LogOut, Plus, Pencil, Trash2, Search, Eye,
   BarChart3, FolderOpen, Save, ShieldCheck, AlertTriangle, CheckCircle2, Loader2,
-  Settings, Tag, Lock, Menu, ChevronLeft, ImagePlus, Layers, RefreshCw
+  Settings, Tag, Lock, Menu, ChevronLeft, ImagePlus, Layers, RefreshCw, MessageSquare
 } from 'lucide-react';
-import { api, type ImageItem, type CategoryItem, type SiteSettings } from './api';
+import { api, type ImageItem, type CategoryItem, type SiteSettings, type CommentItem } from './api';
 
-type AdminTab = 'images' | 'avatars' | 'categories' | 'settings';
+type AdminTab = 'images' | 'avatars' | 'categories' | 'settings' | 'comments' | 'account';
 
 export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const [activeTab, setActiveTab] = useState<AdminTab>('images');
   const [images, setImages] = useState<ImageItem[]>([]);
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [settings, setSettings] = useState<SiteSettings | null>(null);
+  const [comments, setComments] = useState<CommentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -46,14 +47,33 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
 
   const fetchAll = useCallback(async () => {
     try {
-      const [imgs, cats, sets] = await Promise.all([api.getImages(), api.getCategories(), api.getAllSettings()]);
-      setImages(imgs); setCategories(cats); setSettings(sets); setSettingsForm(sets as any);
+      const [imgs, cats, sets, comms] = await Promise.all([api.getImages(), api.getCategories(), api.getAllSettings(), api.getComments()]);
+      setImages(imgs); setCategories(cats); setSettings(sets); setSettingsForm(sets as any); setComments(comms);
       if (cats.length > 0 && !formCategory) setFormCategory(cats[0].name);
     } catch { notify('error', 'فشل في تحميل البيانات'); }
     finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  // ── Comment handlers ──
+  const handleDeleteComment = async (id: number) => {
+    if (!confirm('هل أنت متأكد من حذف هذا التعليق؟')) return;
+    try {
+      await api.deleteComment(id);
+      notify('success', 'تم حذف التعليق');
+      setComments(p => p.filter(c => c.id !== id));
+    } catch { notify('error', 'فشل الحذف'); }
+  };
+
+  const handleUpdateComment = async (c: CommentItem, newContent: string) => {
+    if (!newContent.trim()) return;
+    try {
+      await api.updateComment(c.id, { author_name: c.author_name, author_avatar: c.author_avatar || '', content: newContent });
+      notify('success', 'تم التعديل بنجاح');
+      fetchAll();
+    } catch { notify('error', 'فشل התعديل'); }
+  };
 
   // ── Image handlers ──
   const resetForm = () => { 
@@ -148,6 +168,8 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'images', label: 'الخلفيات', icon: ImageIcon, desc: 'إدارة صور وخلفيات المعرض' },
     { id: 'avatars', label: 'الافتارات', icon: ImagePlus, desc: 'إدارة الافتارات الدائرية' },
     { id: 'categories', label: 'الأقسام', icon: Layers, desc: 'إدارة التصنيفات' },
+    { id: 'comments', label: 'التعليقات', icon: MessageSquare, desc: 'إدارة تعليقات الزوار' },
+    { id: 'account', label: 'حسابي', icon: ShieldCheck, desc: 'تخصيص ملف الإدارة' },
     { id: 'settings', label: 'الإعدادات', icon: Settings, desc: 'إعدادات الموقع' },
   ];
 
@@ -401,6 +423,121 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           </motion.div>
         )}
 
+        {/* ═══ COMMENTS TAB ═══ */}
+        {activeTab === 'comments' && (
+          <motion.div key="comments" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-extrabold text-white mb-1"><MessageSquare className="inline-block w-5 h-5 ml-2 text-emerald-400" />إدارة التعليقات</h2>
+                <p className="text-sm text-zinc-500 font-medium">مراقبة وإدارة جميع تعليقات الزوار والرد عليها</p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-max">
+              {comments.map(c => (
+                <motion.div key={c.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-4 flex flex-col gap-3 group relative">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-zinc-800 shrink-0 overflow-hidden border border-white/10 flex items-center justify-center">
+                        {c.author_avatar ? <img src={c.author_avatar} alt="" className="w-full h-full object-cover" /> : <div className="text-zinc-500 font-bold text-lg">{c.author_name.charAt(0)}</div>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="font-bold text-white text-[13px] md:text-sm">{c.author_name}</h4>
+                          {c.is_admin === 1 && <span className="bg-emerald-500/20 text-emerald-400 text-[9px] px-2 py-0.5 rounded-full font-bold">إدارة</span>}
+                        </div>
+                        <p className="text-[10px] text-zinc-500 flex items-center gap-1 mt-0.5 max-w-full"><Tag size={10} className="shrink-0" /><span className="truncate">{c.image_title || 'صورة غير معروفة'}</span></p>
+                      </div>
+                    </div>
+                    <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
+                      <button onClick={async () => {
+                        const reply = prompt(`الرد على تعليق من ${c.author_name}:`, '');
+                        if (reply && reply.trim()) {
+                          try {
+                            await api.addComment(c.image_id, {
+                              author_name: settings?.admin_name || 'مدير المعرض',
+                              author_avatar: settings?.admin_avatar || '',
+                              content: reply.trim(),
+                              is_admin: true
+                            });
+                            notify('success', 'تم الرد بنجاح');
+                            fetchAll();
+                          } catch { notify('error', 'فشل إضافة الرد'); }
+                        }
+                      }} className="p-1.5 text-zinc-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors" title="إرسال رد"><MessageSquare size={14} /></button>
+                      <button onClick={() => { const nc = prompt('تعديل التعليق:', c.content); if(nc) handleUpdateComment(c, nc); }} className="p-1.5 text-zinc-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors" title="تعديل التعليق"><Pencil size={14} /></button>
+                      <button onClick={() => handleDeleteComment(c.id)} className="p-1.5 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors" title="حذف التعليق"><Trash2 size={14} /></button>
+                    </div>
+                  </div>
+                  <div className="bg-black/30 p-3 rounded-xl border border-white/[0.03]">
+                    <p className="text-[13px] md:text-sm text-zinc-300 font-medium leading-relaxed max-w-full break-words">{c.content}</p>
+                  </div>
+                </motion.div>
+              ))}
+              {comments.length === 0 && (
+                <div className="col-span-1 md:col-span-2 text-center py-16 text-zinc-500 flex flex-col items-center gap-3 bg-white/[0.02] border border-white/[0.05] rounded-3xl">
+                  <MessageSquare className="w-12 h-12 opacity-20" />
+                  <p className="text-lg font-medium text-zinc-400">لا توجد تعليقات حتى الآن</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* ═══ ACCOUNT TAB ═══ */}
+        {activeTab === 'account' && settings && (
+          <motion.div key="account" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="max-w-2xl">
+            <div className="mb-6 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                <ShieldCheck className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg md:text-xl font-extrabold text-white mb-1">الملف الشخصي للإدارة</h2>
+                <p className="text-[12px] md:text-sm text-zinc-500 font-medium">قم بتخصيص هويتك التي تظهر عند الرد على التعليقات</p>
+              </div>
+            </div>
+            
+            <div className="bg-white/[0.02] border border-white/[0.05] rounded-[24px] p-6 md:p-8 space-y-6">
+              <div className="flex flex-col md:flex-row gap-6 items-center md:items-start">
+                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-zinc-900 border border-white/10 shrink-0 overflow-hidden flex items-center justify-center shadow-xl relative group">
+                  {settingsForm.admin_avatar ? (
+                    <img src={settingsForm.admin_avatar} className="w-full h-full object-cover" alt="Admin Avatar" />
+                  ) : (
+                    <ShieldCheck className="w-10 h-10 text-emerald-500 opacity-50" />
+                  )}
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Camera className="w-8 h-8 text-white" />
+                  </div>
+                </div>
+                <div className="flex-1 space-y-4 w-full">
+                  <div>
+                    <label className="block text-sm font-bold text-zinc-300 mb-2">الصورة الشخصية (رابط مباشر)</label>
+                    <input type="url" dir="ltr" placeholder="https://..." value={settingsForm.admin_avatar || ''} onChange={e => setSettingsForm(p => ({ ...p, admin_avatar: e.target.value }))} className="w-full bg-black/30 border border-white/[0.08] rounded-xl px-4 py-3.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 font-medium placeholder:text-zinc-600 placeholder:text-right" />
+                    <p className="text-[11px] text-zinc-500 mt-2 font-medium">ارفع صورة على منصة مثل ImgBB وضع الرابط المباشر هنا.</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="space-y-4 pt-4 border-t border-white/[0.05]">
+                <div>
+                  <label className="block text-sm font-bold text-zinc-300 mb-2">اسمك كمدير في التعليقات</label>
+                  <input type="text" placeholder="مثال: مدير المعرض" value={settingsForm.admin_name || ''} onChange={e => setSettingsForm(p => ({ ...p, admin_name: e.target.value }))} className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 font-bold placeholder:text-zinc-600" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-zinc-300 mb-2">كلمة المرور للدخول للوحة الإدارة</label>
+                  <input type="password" placeholder="••••••••" value={settingsForm.admin_password || ''} onChange={e => setSettingsForm(p => ({ ...p, admin_password: e.target.value }))} className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 font-medium placeholder:text-zinc-600" />
+                </div>
+              </div>
+              
+              <div className="pt-2">
+                <button onClick={handleSaveSettings} disabled={savingSettings} className="w-full flex items-center justify-center gap-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold py-4 rounded-xl transition-all shadow-xl shadow-emerald-500/20 active:scale-[0.98] disabled:opacity-50">
+                  {savingSettings ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />} تحديث بيانات الحساب
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* ═══ SETTINGS TAB ═══ */}
         {activeTab === 'settings' && settings && (
           <motion.div key="settings" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="max-w-2xl">
@@ -420,7 +557,6 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                 { key: 'hero_image', label: 'صورة الخلفية الرئيسية', icon: ImageIcon, dir: 'ltr', placeholder: 'https://...' },
                 { key: 'gallery_title', label: 'عنوان المعرض', icon: Layers, placeholder: 'عنوان قسم المعرض' },
                 { key: 'gallery_description', label: 'وصف المعرض', icon: Layers, textarea: true, placeholder: 'وصف قسم المعرض' },
-                { key: 'admin_password', label: 'كلمة مرور الإدارة', icon: Lock, type: 'password', placeholder: '••••••••' },
               ].filter(f => !f.condition || settingsForm[f.condition] === 'true').map((field, i) => (
                 <motion.div key={field.key} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="bg-white/[0.025] border border-white/[0.05] rounded-2xl p-4 md:p-5 hover:border-white/[0.08] transition-colors">
                   <label className="flex items-center gap-2 text-[12px] md:text-[13px] text-zinc-300 mb-2.5 font-semibold">

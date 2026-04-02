@@ -8,6 +8,17 @@ export interface ImageItem {
   likes?: number;
 }
 
+export interface CommentItem {
+  id: number;
+  image_id: number;
+  author_name: string;
+  author_avatar: string | null;
+  content: string;
+  created_at: string;
+  is_admin?: number;
+  image_title?: string; // only for admin view
+}
+
 export interface CategoryItem {
   id: number;
   name: string;
@@ -49,11 +60,39 @@ export const api = {
     const res = await fetch(`/api/images/${id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('Failed to delete');
   },
-  async likeImage(id: number): Promise<{ success: boolean; likes: number }> {
-    const res = await fetch(`/api/images/${id}/like`, { method: 'POST' });
+  async likeImage(id: number, action: 'like' | 'unlike' = 'like'): Promise<{ success: boolean; likes: number }> {
+    const res = await fetch(`/api/images/${id}/like`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) });
     if (!res.ok) throw new Error('Failed to like image');
     return res.json();
   },
+
+  // Comments
+  async getComments(): Promise<CommentItem[]> {
+    const res = await fetch('/api/comments');
+    if (!res.ok) throw new Error('Failed to fetch');
+    return res.json();
+  },
+  async getImageComments(imageId: number): Promise<CommentItem[]> {
+    const res = await fetch(`/api/images/${imageId}/comments`);
+    if (!res.ok) throw new Error('Failed to fetch');
+    return res.json();
+  },
+  async addComment(imageId: number, data: { author_name: string; author_avatar?: string; content: string; is_admin?: boolean }): Promise<CommentItem> {
+    const res = await fetch(`/api/images/${imageId}/comments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    if (!res.ok) throw new Error('Failed to add comment');
+    return res.json();
+  },
+  async updateComment(id: number, data: { author_name: string; author_avatar?: string; content: string }): Promise<CommentItem> {
+    const res = await fetch(`/api/comments/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    if (!res.ok) throw new Error('Failed to update comment');
+    return res.json();
+  },
+  async deleteComment(id: number): Promise<void> {
+    const res = await fetch(`/api/comments/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to delete comment');
+  },
+
+  // Auth
   async login(password: string): Promise<boolean> {
     const res = await fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) });
     const data = await res.json() as { success: boolean };
