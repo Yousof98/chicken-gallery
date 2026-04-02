@@ -83,11 +83,17 @@ export default function Gallery() {
         <div className="absolute top-[20%] left-[20%] w-64 h-64 bg-emerald-900/20 rounded-full blur-[100px]" />
         <div className="absolute bottom-[20%] right-[20%] w-64 h-64 bg-teal-900/20 rounded-full blur-[100px]" />
         <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="relative z-10 max-w-md text-center flex flex-col items-center gap-6">
-          <motion.div animate={{ rotate: [0, -10, 10, -10, 0] }} transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}>
-            <Moon className="w-20 h-20 text-emerald-400 opacity-80" />
-          </motion.div>
-          <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">الدجاجات نايمات! 🌙</h1>
-          <p className="text-zinc-400 text-base md:text-lg leading-relaxed font-medium">نحن في استراحة قصيرة للراحة وتجديد الطاقة. تو تعال بعدين يا صديقي!</p>
+          {settings.maintenance_image ? (
+            <motion.div animate={{ y: [0, -10, 0] }} transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}>
+               <img src={settings.maintenance_image} alt="صيانة" className="w-32 h-32 md:w-48 md:h-48 object-contain rounded-3xl drop-shadow-2xl" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+            </motion.div>
+          ) : (
+            <motion.div animate={{ rotate: [0, -10, 10, -10, 0] }} transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}>
+              <Moon className="w-20 h-20 text-emerald-400 opacity-80" />
+            </motion.div>
+          )}
+          <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">{settings.maintenance_title || 'الدجاجات نايمات! 🌙'}</h1>
+          <p className="text-zinc-400 text-base md:text-lg leading-relaxed font-medium">{settings.maintenance_message || 'نحن في استراحة قصيرة للراحة وتجديد الطاقة. تو تعال بعدين يا صديقي!'}</p>
           <div className="mt-4 px-6 py-2.5 rounded-full bg-white/5 border border-white/10 text-sm text-zinc-500 font-semibold backdrop-blur-sm">وضع وضعية النوم المُفعل</div>
         </motion.div>
       </div>

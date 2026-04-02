@@ -21,6 +21,9 @@ export interface SiteSettings {
   gallery_title: string;
   gallery_description: string;
   maintenance_mode?: string;
+  maintenance_title?: string;
+  maintenance_message?: string;
+  maintenance_image?: string;
   admin_password?: string;
 }
 

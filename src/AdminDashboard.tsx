@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Image as ImageIcon, Camera, LogOut, Plus, Pencil, Trash2, Search, Eye,
   BarChart3, FolderOpen, Save, ShieldCheck, AlertTriangle, CheckCircle2, Loader2,
-  Settings, Tag, Lock, Menu, ChevronLeft, ImagePlus, Layers
+  Settings, Tag, Lock, Menu, ChevronLeft, ImagePlus, Layers, RefreshCw
 } from 'lucide-react';
 import { api, type ImageItem, type CategoryItem, type SiteSettings } from './api';
 
@@ -189,6 +189,9 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           </div>
           {/* Desktop actions */}
           <div className="hidden md:flex items-center gap-2.5">
+            <button onClick={() => { setLoading(true); fetchAll(); }} className="text-[12px] text-zinc-400 hover:text-white transition-all flex items-center gap-1.5 bg-white/[0.04] hover:bg-white/[0.08] px-3.5 py-2 rounded-xl border border-white/[0.06] font-medium group">
+              <RefreshCw className="w-3.5 h-3.5 group-active:rotate-180 transition-transform duration-500" /> تحديث البيانات
+            </button>
             <a href="/" className="text-[12px] text-zinc-400 hover:text-white transition-all flex items-center gap-1.5 bg-white/[0.04] hover:bg-white/[0.08] px-3.5 py-2 rounded-xl border border-white/[0.06] font-medium">
               <Eye className="w-3.5 h-3.5" /> عرض المعرض
             </a>
@@ -213,9 +216,10 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                     <div className="text-right"><div className="text-[13px]">{tab.label}</div><div className="text-[10px] text-zinc-500">{tab.desc}</div></div>
                   </button>
                 ))}
-                <div className="pt-2 border-t border-white/[0.04] flex gap-2">
-                  <a href="/" className="flex-1 text-center text-[12px] text-zinc-400 bg-white/[0.04] py-2.5 rounded-xl font-medium">عرض المعرض</a>
-                  <button onClick={handleLogout} className="flex-1 text-center text-[12px] text-red-400 bg-red-500/[0.06] py-2.5 rounded-xl font-medium">خروج</button>
+                <div className="pt-2 border-t border-white/[0.04] flex flex-wrap gap-2">
+                  <button onClick={() => { setMobileMenuOpen(false); setLoading(true); fetchAll(); }} className="w-full text-center text-[12px] text-emerald-400 bg-emerald-500/[0.06] py-2.5 rounded-xl font-medium flex justify-center items-center gap-1.5 border border-emerald-500/10"><RefreshCw className="w-3 h-3" /> تحديث البيانات</button>
+                  <a href="/" className="flex-1 text-center text-[12px] text-zinc-400 bg-white/[0.04] py-2.5 rounded-xl font-medium border border-white/[0.06]">عرض المعرض</a>
+                  <button onClick={handleLogout} className="flex-1 text-center text-[12px] text-red-400 bg-red-500/[0.06] py-2.5 rounded-xl font-medium border border-red-500/10">خروج</button>
                 </div>
               </div>
             </motion.div>
@@ -385,11 +389,14 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                 { key: 'site_subtitle', label: 'العنوان الفرعي', icon: Tag, placeholder: 'العنوان الفرعي' },
                 { key: 'site_description', label: 'وصف الموقع', icon: Settings, textarea: true, placeholder: 'وصف تفصيلي للموقع' },
                 { key: 'maintenance_mode', label: 'وضع وضعية النوم 🌙 (إغلاق الموقع مؤقتاً)', icon: Lock, type: 'checkbox' },
+                { key: 'maintenance_title', label: 'عنوان شاشة النوم', icon: Tag, placeholder: 'مثال: الدجاجات نايمات! 🌙', condition: 'maintenance_mode' },
+                { key: 'maintenance_message', label: 'رسالة وضع النوم', icon: Settings, textarea: true, placeholder: 'رسالة الزوار', condition: 'maintenance_mode' },
+                { key: 'maintenance_image', label: 'صورة/GIF لوضع النوم', icon: ImageIcon, dir: 'ltr', placeholder: 'رابط صورة متحركة...', condition: 'maintenance_mode' },
                 { key: 'hero_image', label: 'صورة الخلفية الرئيسية', icon: ImageIcon, dir: 'ltr', placeholder: 'https://...' },
                 { key: 'gallery_title', label: 'عنوان المعرض', icon: Layers, placeholder: 'عنوان قسم المعرض' },
                 { key: 'gallery_description', label: 'وصف المعرض', icon: Layers, textarea: true, placeholder: 'وصف قسم المعرض' },
                 { key: 'admin_password', label: 'كلمة مرور الإدارة', icon: Lock, type: 'password', placeholder: '••••••••' },
-              ].map((field, i) => (
+              ].filter(f => !f.condition || settingsForm[f.condition] === 'true').map((field, i) => (
                 <motion.div key={field.key} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="bg-white/[0.025] border border-white/[0.05] rounded-2xl p-4 md:p-5 hover:border-white/[0.08] transition-colors">
                   <label className="flex items-center gap-2 text-[12px] md:text-[13px] text-zinc-300 mb-2.5 font-semibold">
                     <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center">
@@ -408,10 +415,10 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                   ) : (
                     <input type={field.type || 'text'} dir={field.dir as any || 'rtl'} value={settingsForm[field.key] || ''} onChange={(e) => setSettingsForm(p => ({ ...p, [field.key]: e.target.value }))} placeholder={field.placeholder} className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl px-4 py-3 text-[13px] md:text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all font-medium" />
                   )}
-                  {/* Preview hero image */}
-                  {field.key === 'hero_image' && settingsForm.hero_image && (
-                    <div className="mt-2.5 rounded-xl overflow-hidden border border-white/[0.06] h-24 md:h-32">
-                      <img src={settingsForm.hero_image} alt="معاينة" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                  {/* Preview images */}
+                  {(field.key === 'hero_image' || field.key === 'maintenance_image') && settingsForm[field.key] && (
+                    <div className="mt-2.5 rounded-xl overflow-hidden border border-white/[0.06] h-24 md:h-32 bg-black/50 flex align-center justify-center">
+                      <img src={settingsForm[field.key]} alt="معاينة" className="w-full h-full object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                     </div>
                   )}
                 </motion.div>
