@@ -1,0 +1,4 @@
+name = "chicken-gallery"
+compatibility_date = "2025-09-27"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "dist"
