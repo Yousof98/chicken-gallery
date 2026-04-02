@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { api, type ImageItem, type CategoryItem, type SiteSettings } from './api';
 
-type AdminTab = 'images' | 'categories' | 'settings';
+type AdminTab = 'images' | 'avatars' | 'categories' | 'settings';
 
 export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const [activeTab, setActiveTab] = useState<AdminTab>('images');
@@ -121,7 +121,12 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     catch { notify('error', 'فشل في حفظ الإعدادات'); } finally { setSavingSettings(false); }
   };
 
-  const filteredImages = images.filter(img => {
+  const isAvatar = (name: string) => name.includes('افتار') || name.includes('أفتار');
+  const wallpaperImages = images.filter(img => !isAvatar(img.category));
+  const avatarImages = images.filter(img => isAvatar(img.category));
+  const activeImages = activeTab === 'avatars' ? avatarImages : activeTab === 'images' ? wallpaperImages : images;
+
+  const filteredImages = activeImages.filter(img => {
     const matchSearch = !searchQuery || img.title.includes(searchQuery) || img.story.includes(searchQuery) || img.category.includes(searchQuery);
     const matchCategory = filterCategory === 'الكل' || img.category === filterCategory;
     return matchSearch && matchCategory;
@@ -130,10 +135,12 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const handleLogout = () => { sessionStorage.removeItem('admin_auth'); onLogout(); };
 
   const tabs: { id: AdminTab; label: string; icon: any; desc: string }[] = [
-    { id: 'images', label: 'الصور', icon: ImageIcon, desc: 'إدارة معرض الصور' },
+    { id: 'images', label: 'الخلفيات', icon: ImageIcon, desc: 'إدارة صور وخلفيات المعرض' },
+    { id: 'avatars', label: 'الافتارات', icon: ImagePlus, desc: 'إدارة الافتارات الدائرية' },
     { id: 'categories', label: 'الأقسام', icon: Layers, desc: 'إدارة التصنيفات' },
     { id: 'settings', label: 'الإعدادات', icon: Settings, desc: 'إعدادات الموقع' },
   ];
+
 
   const switchTab = (tab: AdminTab) => { setActiveTab(tab); setMobileMenuOpen(false); };
 
@@ -233,8 +240,8 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           {[
             { label: 'إجمالي الصور', value: images.length, icon: ImageIcon, gradient: 'from-emerald-500 to-teal-600', shadow: 'shadow-emerald-500/20' },
             { label: 'الأقسام', value: categories.length, icon: FolderOpen, gradient: 'from-violet-500 to-purple-600', shadow: 'shadow-violet-500/20' },
-            { label: 'بورتريه', value: images.filter(i => i.category === 'بورتريه').length, icon: Camera, gradient: 'from-amber-500 to-orange-600', shadow: 'shadow-amber-500/20' },
-            { label: 'كتاكيت', value: images.filter(i => i.category === 'كتاكيت').length, icon: BarChart3, gradient: 'from-sky-500 to-blue-600', shadow: 'shadow-sky-500/20' },
+            { label: 'الخلفيات', value: wallpaperImages.length, icon: ImageIcon, gradient: 'from-amber-500 to-orange-600', shadow: 'shadow-amber-500/20' },
+            { label: 'الافتارات', value: avatarImages.length, icon: ImagePlus, gradient: 'from-sky-500 to-blue-600', shadow: 'shadow-sky-500/20' },
           ].map((stat, i) => (
             <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }} className="bg-white/[0.025] border border-white/[0.05] rounded-2xl md:rounded-[20px] p-4 md:p-5 hover:bg-white/[0.04] transition-colors group">
               <div className={`w-9 h-9 md:w-11 md:h-11 rounded-xl md:rounded-[14px] bg-gradient-to-br ${stat.gradient} flex items-center justify-center mb-3 shadow-lg ${stat.shadow} group-hover:scale-105 transition-transform`}>
@@ -255,9 +262,9 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           ))}
         </div>
 
-        {/* ═══ IMAGES TAB ═══ */}
-        {activeTab === 'images' && (
-          <motion.div key="images" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+        {/* ═══ IMAGES AND AVATARS TAB ═══ */}
+        {(activeTab === 'images' || activeTab === 'avatars') && (
+          <motion.div key={activeTab} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
             {/* Toolbar */}
             <div className="flex flex-col gap-3 mb-5 md:mb-6">
               <div className="flex items-center gap-2 md:gap-3">
@@ -267,11 +274,11 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                 </div>
                 <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="bg-white/[0.04] border border-white/[0.06] rounded-xl md:rounded-[14px] px-3 md:px-4 py-2.5 md:py-3 text-[13px] md:text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 appearance-none cursor-pointer font-medium min-w-[100px]">
                   <option value="الكل">كل الأقسام</option>
-                  {categories.map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
+                  {categories.filter(c => activeTab === 'avatars' ? isAvatar(c.name) : !isAvatar(c.name)).map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
                 </select>
               </div>
               <button onClick={openAddModal} className="w-full md:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold px-5 py-3 rounded-xl md:rounded-[14px] transition-all shadow-lg shadow-emerald-500/20 text-[13px] md:text-sm active:scale-[0.98]">
-                <ImagePlus className="w-4 h-4" /> إضافة صورة جديدة
+                <ImagePlus className="w-4 h-4" /> {activeTab === 'avatars' ? 'إضافة أفتار جديد' : 'إضافة صورة جديدة'}
               </button>
             </div>
 
