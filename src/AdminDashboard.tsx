@@ -384,6 +384,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                 { key: 'site_title', label: 'عنوان الموقع', icon: Settings, placeholder: 'عنوان الموقع الرئيسي' },
                 { key: 'site_subtitle', label: 'العنوان الفرعي', icon: Tag, placeholder: 'العنوان الفرعي' },
                 { key: 'site_description', label: 'وصف الموقع', icon: Settings, textarea: true, placeholder: 'وصف تفصيلي للموقع' },
+                { key: 'maintenance_mode', label: 'وضع وضعية النوم 🌙 (إغلاق الموقع مؤقتاً)', icon: Lock, type: 'checkbox' },
                 { key: 'hero_image', label: 'صورة الخلفية الرئيسية', icon: ImageIcon, dir: 'ltr', placeholder: 'https://...' },
                 { key: 'gallery_title', label: 'عنوان المعرض', icon: Layers, placeholder: 'عنوان قسم المعرض' },
                 { key: 'gallery_description', label: 'وصف المعرض', icon: Layers, textarea: true, placeholder: 'وصف قسم المعرض' },
@@ -396,7 +397,13 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                     </div>
                     {field.label}
                   </label>
-                  {field.textarea ? (
+                  {field.type === 'checkbox' ? (
+                    <label className="relative inline-flex items-center cursor-pointer mt-1">
+                      <input type="checkbox" checked={settingsForm[field.key] === 'true'} onChange={(e) => setSettingsForm(p => ({ ...p, [field.key]: e.target.checked ? 'true' : 'false' }))} className="sr-only peer" />
+                      <div className="w-11 h-6 bg-white/[0.06] border border-white/[0.08] peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-zinc-400 after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 peer-checked:after:bg-white" />
+                      <span className="mr-3 text-xs md:text-sm text-zinc-400 font-medium">تفعيل/إلغاء</span>
+                    </label>
+                  ) : field.textarea ? (
                     <textarea value={settingsForm[field.key] || ''} onChange={(e) => setSettingsForm(p => ({ ...p, [field.key]: e.target.value }))} rows={3} placeholder={field.placeholder} className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl px-4 py-3 text-[13px] md:text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all resize-none font-medium leading-relaxed" />
                   ) : (
                     <input type={field.type || 'text'} dir={field.dir as any || 'rtl'} value={settingsForm[field.key] || ''} onChange={(e) => setSettingsForm(p => ({ ...p, [field.key]: e.target.value }))} placeholder={field.placeholder} className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl px-4 py-3 text-[13px] md:text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all font-medium" />

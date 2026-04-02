@@ -20,6 +20,7 @@ export interface SiteSettings {
   hero_image: string;
   gallery_title: string;
   gallery_description: string;
+  maintenance_mode?: string;
   admin_password?: string;
 }
 

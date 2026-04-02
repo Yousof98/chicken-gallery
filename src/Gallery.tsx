@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform, useSpring } from 'motion/react';
-import { X, Image as ImageIcon, Quote, Download, Monitor, Smartphone, LayoutGrid, Maximize, ChevronDown, Loader2 } from 'lucide-react';
+import { X, Image as ImageIcon, Quote, Download, Monitor, Smartphone, LayoutGrid, Maximize, ChevronDown, Loader2, Moon } from 'lucide-react';
 import { api, type ImageItem, type SiteSettings, type CategoryItem } from './api';
 
 export default function Gallery() {
@@ -72,6 +72,23 @@ export default function Gallery() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center gap-4">
           <Loader2 className="w-10 h-10 text-emerald-400 animate-spin" />
           <p className="text-zinc-400 text-lg font-medium">جاري تحميل المعرض...</p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (settings.maintenance_mode === 'true') {
+    return (
+      <div dir="rtl" className="min-h-[100dvh] bg-[#050505] text-zinc-50 font-sans flex items-center justify-center p-6 relative overflow-hidden">
+        <div className="absolute top-[20%] left-[20%] w-64 h-64 bg-emerald-900/20 rounded-full blur-[100px]" />
+        <div className="absolute bottom-[20%] right-[20%] w-64 h-64 bg-teal-900/20 rounded-full blur-[100px]" />
+        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="relative z-10 max-w-md text-center flex flex-col items-center gap-6">
+          <motion.div animate={{ rotate: [0, -10, 10, -10, 0] }} transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}>
+            <Moon className="w-20 h-20 text-emerald-400 opacity-80" />
+          </motion.div>
+          <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">الدجاجات نايمات! 🌙</h1>
+          <p className="text-zinc-400 text-base md:text-lg leading-relaxed font-medium">نحن في استراحة قصيرة للراحة وتجديد الطاقة. تو تعال بعدين يا صديقي!</p>
+          <div className="mt-4 px-6 py-2.5 rounded-full bg-white/5 border border-white/10 text-sm text-zinc-500 font-semibold backdrop-blur-sm">وضع وضعية النوم المُفعل</div>
         </motion.div>
       </div>
     );
