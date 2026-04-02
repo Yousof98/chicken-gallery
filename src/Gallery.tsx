@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform, useSpring } from 'motion/react';
-import { X, Image as ImageIcon, Quote, Download, Monitor, Smartphone, LayoutGrid, Maximize, ChevronDown, Loader2, Moon, Heart, Trophy, MessageSquare, User, Send, Clock, ShieldCheck, ArrowRight, ChevronRight } from 'lucide-react';
+import { X, Image as ImageIcon, Quote, Download, Monitor, Smartphone, LayoutGrid, Maximize, ChevronDown, Loader2, Moon, Heart, Trophy, MessageSquare, User, Send, Clock, ShieldCheck, ArrowRight, Camera } from 'lucide-react';
 import { api, type ImageItem, type SiteSettings, type CategoryItem, type CommentItem } from './api';
+import { uploadToImgBB } from './uploadUtils';
 
 // Visitor profile stored in localStorage
 interface VisitorProfile { name: string; avatar: string; }
@@ -40,6 +41,9 @@ export default function Gallery() {
   const [profileDraft, setProfileDraft] = useState({ name: '', avatar: '' });
   const [commentDraft, setCommentDraft] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const commentImgInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { localStorage.setItem('chicken_gallery_likes', JSON.stringify(likedImages)); }, [likedImages]);
 
@@ -156,6 +160,33 @@ export default function Gallery() {
   const handleOpenComments = (e: React.MouseEvent, img: ImageItem) => {
     e.stopPropagation();
     setCommentsImage(img);
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingAvatar(true);
+    try {
+      const url = await uploadToImgBB(file);
+      setProfileDraft(p => ({ ...p, avatar: url }));
+    } catch { alert('فشل رفع الصورة، حاول مرة أخرى.'); }
+    finally { setUploadingAvatar(false); }
+  };
+
+  const handleCommentAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingAvatar(true);
+    try {
+      const url = await uploadToImgBB(file);
+      // update the profile if it exists, or set it as draft for upload
+      if (visitorProfile) {
+        const updated = { ...visitorProfile, avatar: url };
+        localStorage.setItem(PROFILE_KEY, JSON.stringify(updated));
+        setVisitorProfile(updated);
+      }
+    } catch { alert('فشل رفع الصورة.'); }
+    finally { setUploadingAvatar(false); }
   };
 
   const handleSaveProfile = () => {
@@ -521,12 +552,16 @@ export default function Gallery() {
                     </div>
 
                     <div className="flex-1 px-5 py-6 space-y-6">
-                    {/* Avatar preview */}
+                    {/* Avatar picker */}
                     <div className="flex flex-col items-center mb-2">
-                      <div className="w-24 h-24 rounded-full bg-zinc-800 border-2 border-emerald-500/30 overflow-hidden flex items-center justify-center mb-3 shadow-lg shadow-emerald-500/10">
-                        {profileDraft.avatar ? <img src={profileDraft.avatar} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display='none'; }} /> : <User className="w-10 h-10 text-zinc-500" />}
-                      </div>
-                      <p className="text-[12px] text-zinc-500">صورتك الشخصية (معاينة)</p>
+                      <button type="button" onClick={() => avatarInputRef.current?.click()} className="relative w-28 h-28 rounded-full bg-zinc-800 border-2 border-emerald-500/30 overflow-hidden flex items-center justify-center mb-3 shadow-lg shadow-emerald-500/10 group cursor-pointer hover:border-emerald-400/50 transition-all">
+                        {profileDraft.avatar ? <img src={profileDraft.avatar} alt="" className="w-full h-full object-cover" /> : <User className="w-10 h-10 text-zinc-600" />}
+                        <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          {uploadingAvatar ? <Loader2 className="w-7 h-7 text-white animate-spin" /> : <><Camera className="w-7 h-7 text-white mb-1" /><span className="text-[11px] text-white font-bold">رفع صورة</span></>}
+                        </div>
+                      </button>
+                      <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+                      <p className="text-[12px] text-zinc-500">{uploadingAvatar ? 'جاري الرفع...' : 'اضغط على الدائرة لاختيار صورة'}</p>
                     </div>
 
                     <div className="space-y-4">
@@ -540,18 +575,6 @@ export default function Gallery() {
                           className="w-full bg-white/[0.04] border border-white/[0.08] rounded-2xl px-5 py-4 text-base text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/30 transition-all placeholder:text-zinc-600 font-bold"
                           autoFocus
                         />
-                      </div>
-                      <div>
-                        <label className="text-sm font-bold text-zinc-300 mb-2 block">رابط صورتك الشخصية (اختياري)</label>
-                        <input
-                          type="url"
-                          dir="ltr"
-                          placeholder="https://i.ibb.co/..."
-                          value={profileDraft.avatar}
-                          onChange={(e) => setProfileDraft(p => ({ ...p, avatar: e.target.value }))}
-                          className="w-full bg-white/[0.04] border border-white/[0.08] rounded-2xl px-5 py-4 text-base text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/30 transition-all placeholder:text-zinc-600"
-                        />
-                        <p className="text-[11px] text-zinc-600 mt-2 leading-snug">ارفع صورتك على <a href="https://imgbb.com" target="_blank" className="text-emerald-500 underline">ImgBB</a> مجاناً وألصق الرابط هنا</p>
                       </div>
                     </div>
                     </div>

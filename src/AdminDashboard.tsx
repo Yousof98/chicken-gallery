@@ -6,6 +6,8 @@ import {
   Settings, Tag, Lock, Menu, ChevronLeft, ImagePlus, Layers, RefreshCw, MessageSquare
 } from 'lucide-react';
 import { api, type ImageItem, type CategoryItem, type SiteSettings, type CommentItem } from './api';
+import { uploadToImgBB } from './uploadUtils';
+import { useRef } from 'react';
 
 type AdminTab = 'images' | 'avatars' | 'categories' | 'settings' | 'comments' | 'account';
 
@@ -27,6 +29,8 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingAdminAvatar, setUploadingAdminAvatar] = useState(false);
+  const adminAvatarInputRef = useRef<HTMLInputElement>(null);
   const [formUrl, setFormUrl] = useState('');
   const [formTitle, setFormTitle] = useState('');
   const [formCategory, setFormCategory] = useState('');
@@ -130,6 +134,18 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     } finally {
       setUploadingImage(false);
     }
+  };
+
+  const handleAdminAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingAdminAvatar(true);
+    try {
+      const url = await uploadToImgBB(file);
+      setSettingsForm(p => ({ ...p, admin_avatar: url }));
+      notify('success', 'تم رفع الصورة بنجاح');
+    } catch { notify('error', 'فشل رفع الصورة'); }
+    finally { setUploadingAdminAvatar(false); }
   };
 
   // ── Category handlers ──
@@ -499,22 +515,17 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
             
             <div className="bg-white/[0.02] border border-white/[0.05] rounded-[24px] p-6 md:p-8 space-y-6">
               <div className="flex flex-col md:flex-row gap-6 items-center md:items-start">
-                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-zinc-900 border border-white/10 shrink-0 overflow-hidden flex items-center justify-center shadow-xl relative group">
-                  {settingsForm.admin_avatar ? (
-                    <img src={settingsForm.admin_avatar} className="w-full h-full object-cover" alt="Admin Avatar" />
-                  ) : (
-                    <ShieldCheck className="w-10 h-10 text-emerald-500 opacity-50" />
-                  )}
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Camera className="w-8 h-8 text-white" />
+                {/* Clickable avatar with upload */}
+                <button type="button" onClick={() => adminAvatarInputRef.current?.click()} className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-zinc-900 border border-white/10 shrink-0 overflow-hidden flex items-center justify-center shadow-xl relative group cursor-pointer hover:border-emerald-500/40 transition-all">
+                  {settingsForm.admin_avatar ? <img src={settingsForm.admin_avatar} className="w-full h-full object-cover" alt="Admin Avatar" /> : <ShieldCheck className="w-10 h-10 text-emerald-500 opacity-50" />}
+                  <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1">
+                    {uploadingAdminAvatar ? <Loader2 className="w-8 h-8 text-white animate-spin" /> : <><Camera className="w-8 h-8 text-white" /><span className="text-[11px] text-white font-bold">رفع صورة</span></>}
                   </div>
-                </div>
-                <div className="flex-1 space-y-4 w-full">
-                  <div>
-                    <label className="block text-sm font-bold text-zinc-300 mb-2">الصورة الشخصية (رابط مباشر)</label>
-                    <input type="url" dir="ltr" placeholder="https://..." value={settingsForm.admin_avatar || ''} onChange={e => setSettingsForm(p => ({ ...p, admin_avatar: e.target.value }))} className="w-full bg-black/30 border border-white/[0.08] rounded-xl px-4 py-3.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 font-medium placeholder:text-zinc-600 placeholder:text-right" />
-                    <p className="text-[11px] text-zinc-500 mt-2 font-medium">ارفع صورة على منصة مثل ImgBB وضع الرابط المباشر هنا.</p>
-                  </div>
+                </button>
+                <input ref={adminAvatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAdminAvatarUpload} />
+                <div className="flex-1 space-y-2 w-full text-center md:text-right">
+                  <p className="text-sm font-bold text-white">{settingsForm.admin_name || 'مدير المعرض'}</p>
+                  <p className="text-[12px] text-zinc-500">{uploadingAdminAvatar ? 'جاري رفع الصورة...' : 'اضغط على الصورة لتغييرها'}</p>
                 </div>
               </div>
               
