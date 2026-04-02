@@ -335,6 +335,14 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
             <div className="mb-6">
               <h2 className="text-lg md:text-xl font-extrabold text-white mb-1">إدارة الأقسام</h2>
               <p className="text-[12px] md:text-sm text-zinc-500 font-medium">أضف أو احذف تصنيفات المعرض</p>
+              
+              <div className="mt-3 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl flex items-start gap-2 max-w-lg">
+                <Tag className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
+                <p className="text-[11px] md:text-xs text-indigo-200">
+                  <strong className="block text-indigo-300 font-bold mb-0.5">💡 تلميحة الأفتارات:</strong>
+                  أي قسم يحتوي اسمه على كلمة <span className="bg-indigo-500/20 px-1 rounded text-white">"افتار"</span> أو <span className="bg-indigo-500/20 px-1 rounded text-white">"أفتار"</span> (مثل: "افتارات انمي")، سيتم عرضه تلقائياً في قسم "الافتارات" المنفصل بتصميم دائري في الموقع!
+                </p>
+              </div>
             </div>
             {/* Add category */}
             <div className="flex items-center gap-2 md:gap-3 mb-5 md:mb-6">

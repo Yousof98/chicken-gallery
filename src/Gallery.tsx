@@ -10,6 +10,7 @@ export default function Gallery() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('الكل');
   const [deviceFilter, setDeviceFilter] = useState('الكل');
+  const [mainView, setMainView] = useState<'wallpapers' | 'avatars'>('wallpapers');
   const [selectedImage, setSelectedImage] = useState<ImageItem | null>(null);
   const [isDownloading, setIsDownloading] = useState<number | null>(null);
   const [dimensions, setDimensions] = useState<Record<number, { w: number; h: number }>>({});
@@ -34,12 +35,17 @@ export default function Gallery() {
     return () => clearInterval(interval);
   }, []);
 
-  const categoryNames = ['الكل', ...categories.map(c => c.name)];
+  const isAvatar = (catName: string) => catName.includes('افتار') || catName.includes('أفتار');
+  const viewCategories = categories.filter(c => mainView === 'avatars' ? isAvatar(c.name) : !isAvatar(c.name));
+  const categoryNames = ['الكل', ...viewCategories.map(c => c.name)];
 
   const filteredImages = images.filter(img => {
+    if (mainView === 'avatars' && !isAvatar(img.category)) return false;
+    if (mainView === 'wallpapers' && isAvatar(img.category)) return false;
+
     const matchCategory = filter === 'الكل' || img.category === filter;
     let matchDevice = true;
-    if (deviceFilter !== 'الكل') {
+    if (mainView === 'wallpapers' && deviceFilter !== 'الكل') {
       const dim = dimensions[img.id];
       if (dim) {
         const isDesktop = dim.w > dim.h;
@@ -139,25 +145,41 @@ export default function Gallery() {
       </motion.section>
 
       {/* Gallery Intro - uses settings */}
-      <motion.header initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }} className="relative pt-20 pb-12 md:pb-16 px-4 md:px-12 max-w-7xl mx-auto flex flex-col items-center text-center z-10 justify-center">
-        <div className="flex flex-col items-center gap-4 md:gap-6 w-full">
+      <motion.header initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }} className="relative pt-20 pb-8 md:pb-12 px-4 md:px-12 max-w-7xl mx-auto flex flex-col items-center text-center z-10 justify-center">
+        <div className="flex flex-col items-center gap-4 md:gap-6 w-full mb-6 md:mb-10">
           <h2 className="text-4xl md:text-6xl font-bold tracking-tighter leading-[1.1]">
             <span className="text-transparent bg-clip-text bg-gradient-to-b from-emerald-400 to-teal-600">{settings.gallery_title}</span>
           </h2>
           <p className="text-zinc-400 text-base md:text-xl max-w-2xl leading-relaxed font-medium px-4 md:px-0">{settings.gallery_description}</p>
         </div>
+
+        {/* Main View Toggle (Wallpapers vs Avatars) */}
+        <div className="flex justify-center w-full mb-6 relative z-30">
+          <div className="relative flex items-center p-1.5 md:p-2 bg-white/5 backdrop-blur-3xl border border-white/10 rounded-full shadow-2xl">
+            <button onClick={() => { setMainView('wallpapers'); setFilter('الكل'); setDeviceFilter('الكل'); }} className={`relative px-6 md:px-10 py-2.5 md:py-3.5 rounded-full text-sm md:text-base font-extrabold transition-all duration-500 z-10 ${mainView === 'wallpapers' ? 'text-emerald-950' : 'text-zinc-400 hover:text-white'}`}>
+              {mainView === 'wallpapers' && <motion.div layoutId="activeMainView" className="absolute inset-0 bg-emerald-400 rounded-full shadow-[0_0_20px_rgba(52,211,153,0.4)]" transition={{ type: "spring", bounce: 0.25, duration: 0.6 }} />}
+              <span className="relative z-20 flex items-center gap-2">🏞️ الخلفيات</span>
+            </button>
+            <button onClick={() => { setMainView('avatars'); setFilter('الكل'); }} className={`relative px-6 md:px-10 py-2.5 md:py-3.5 rounded-full text-sm md:text-base font-extrabold transition-all duration-500 z-10 ${mainView === 'avatars' ? 'text-emerald-950' : 'text-zinc-400 hover:text-white'}`}>
+              {mainView === 'avatars' && <motion.div layoutId="activeMainView" className="absolute inset-0 bg-emerald-400 rounded-full shadow-[0_0_20px_rgba(52,211,153,0.4)]" transition={{ type: "spring", bounce: 0.25, duration: 0.6 }} />}
+              <span className="relative z-20 flex items-center gap-2">🧑‍🎨 الافتارات</span>
+            </button>
+          </div>
+        </div>
       </motion.header>
 
       {/* Filters - categories from Turso */}
       <div className="sticky top-4 md:top-6 z-30 flex flex-col items-center gap-2.5 md:gap-4 mb-8 md:mb-16 w-full overflow-hidden">
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.1 }} className="relative flex items-center p-1 md:p-1.5 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-full shadow-2xl max-w-[90vw]">
-          {[{ id: 'الكل', icon: LayoutGrid, label: 'الكل' }, { id: 'كمبيوتر', icon: Monitor, label: 'كمبيوتر' }, { id: 'هاتف', icon: Smartphone, label: 'هاتف' }].map(dev => (
-            <button key={dev.id} onClick={() => setDeviceFilter(dev.id)} className={`relative px-3 sm:px-4 md:px-5 py-2 md:py-2.5 rounded-full text-[11px] sm:text-xs md:text-sm font-bold transition-all duration-500 flex items-center gap-1 sm:gap-1.5 md:gap-2 ${deviceFilter === dev.id ? 'text-white' : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/5'}`}>
-              {deviceFilter === dev.id && <motion.div layoutId="activeDevice" className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 rounded-full" transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} />}
-              <dev.icon size={14} className="relative z-10 md:w-4 md:h-4" /><span className="relative z-10">{dev.label}</span>
-            </button>
-          ))}
-        </motion.div>
+        {mainView === 'wallpapers' && (
+          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.1 }} className="relative flex items-center p-1 md:p-1.5 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-full shadow-2xl max-w-[90vw]">
+            {[{ id: 'الكل', icon: LayoutGrid, label: 'الكل' }, { id: 'كمبيوتر', icon: Monitor, label: 'كمبيوتر' }, { id: 'هاتف', icon: Smartphone, label: 'هاتف' }].map(dev => (
+              <button key={dev.id} onClick={() => setDeviceFilter(dev.id)} className={`relative px-3 sm:px-4 md:px-5 py-2 md:py-2.5 rounded-full text-[11px] sm:text-xs md:text-sm font-bold transition-all duration-500 flex items-center gap-1 sm:gap-1.5 md:gap-2 ${deviceFilter === dev.id ? 'text-white' : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/5'}`}>
+                {deviceFilter === dev.id && <motion.div layoutId="activeDevice" className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 rounded-full" transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} />}
+                <dev.icon size={14} className="relative z-10 md:w-4 md:h-4" /><span className="relative z-10">{dev.label}</span>
+              </button>
+            ))}
+          </motion.div>
+        )}
         
         {/* Categories scrollable in mobile */}
         <div className="w-full overflow-x-auto hide-scrollbar px-4 sm:px-8 snap-x snap-mandatory flex justify-start md:justify-center">
@@ -174,23 +196,23 @@ export default function Gallery() {
 
       {/* Gallery Grid */}
       <main className="px-4 md:px-12 max-w-7xl mx-auto pb-20 md:pb-32 relative z-10">
-        <motion.div layout className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 md:gap-6">
+        <motion.div layout className={mainView === 'wallpapers' ? "columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 md:gap-6" : "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-5"}>
           <AnimatePresence mode="popLayout">
             {filteredImages.map((img, index) => (
-              <motion.div layout initial={{ opacity: 0, y: 100, scale: 0.9 }} whileInView={{ opacity: 1, y: 0, scale: 1 }} viewport={{ once: true, margin: "-50px" }} exit={{ opacity: 0, scale: 0.9 }} transition={{ duration: 0.8, type: "spring", bounce: 0.3, delay: index % 4 * 0.1 }} key={img.id} className="relative group overflow-hidden rounded-2xl md:rounded-3xl cursor-zoom-in break-inside-avoid bg-zinc-900/50 border border-white/5 shadow-2xl mb-4 md:mb-6" onClick={() => setSelectedImage(img)}>
-                <motion.img layoutId={`img-${img.id}`} src={img.url} alt={img.title} onLoad={(e) => { const t = e.target as HTMLImageElement; setDimensions(p => ({ ...p, [img.id]: { w: t.naturalWidth, h: t.naturalHeight } })); }} className="w-full h-auto object-cover transition-all duration-1000 ease-[cubic-bezier(0.25,1,0.5,1)] md:group-hover:scale-110 md:group-hover:-rotate-1 md:group-hover:brightness-75 brightness-90 md:brightness-100" loading="lazy" />
-                <div className="absolute inset-x-0 bottom-0 top-1/2 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-4 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-500 ease-in-out pointer-events-none">
-                  <div className="translate-y-0 md:translate-y-6 md:group-hover:translate-y-0 transition-transform duration-500 flex flex-col justify-end h-full">
-                    <div className="flex justify-between items-end mb-2 pointer-events-auto">
+              <motion.div layout initial={{ opacity: 0, y: 100, scale: 0.9 }} whileInView={{ opacity: 1, y: 0, scale: 1 }} viewport={{ once: true, margin: "-50px" }} exit={{ opacity: 0, scale: 0.9 }} transition={{ duration: 0.8, type: "spring", bounce: 0.3, delay: index % 4 * 0.1 }} key={img.id} className={`relative group overflow-hidden cursor-zoom-in break-inside-avoid bg-zinc-900/50 border border-white/5 shadow-2xl ${mainView === 'wallpapers' ? 'rounded-2xl md:rounded-3xl mb-4 md:mb-6' : 'rounded-[30%] md:rounded-[40%] w-full aspect-square'}`} onClick={() => setSelectedImage(img)}>
+                <motion.img layoutId={`img-${img.id}`} src={img.url} alt={img.title} onLoad={(e) => { const t = e.target as HTMLImageElement; setDimensions(p => ({ ...p, [img.id]: { w: t.naturalWidth, h: t.naturalHeight } })); }} className={`w-full object-cover transition-all duration-1000 ease-[cubic-bezier(0.25,1,0.5,1)] md:group-hover:scale-110 md:group-hover:-rotate-1 brightness-90 md:brightness-100 ${mainView === 'wallpapers' ? 'h-auto md:group-hover:brightness-75' : 'h-full md:group-hover:brightness-75'}`} loading="lazy" />
+                <div className={`absolute inset-x-0 bottom-0 top-1/2 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-4 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-500 ease-in-out pointer-events-none ${mainView === 'avatars' ? 'md:p-3' : ''}`}>
+                  <div className={`translate-y-0 md:translate-y-6 md:group-hover:translate-y-0 transition-transform duration-500 flex flex-col justify-end h-full`}>
+                    <div className={`flex justify-between items-end pointer-events-auto ${mainView === 'avatars' ? 'mb-1.5' : 'mb-2'}`}>
                       <div>
-                        <h3 className="text-sm md:text-lg font-bold text-white mb-1 drop-shadow-md">{img.title}</h3>
-                        {dimensions[img.id] && (<div className="flex items-center gap-1 text-[9px] md:text-[10px] font-mono text-emerald-300 bg-emerald-500/20 px-1.5 py-0.5 rounded border border-emerald-500/30 backdrop-blur-md w-fit"><Maximize size={10} />{dimensions[img.id].w} × {dimensions[img.id].h}</div>)}
+                        {mainView === 'wallpapers' && <h3 className="text-sm md:text-lg font-bold text-white mb-1 drop-shadow-md">{img.title}</h3>}
+                        {mainView === 'wallpapers' && dimensions[img.id] && (<div className="flex items-center gap-1 text-[9px] md:text-[10px] font-mono text-emerald-300 bg-emerald-500/20 px-1.5 py-0.5 rounded border border-emerald-500/30 backdrop-blur-md w-fit"><Maximize size={10} />{dimensions[img.id].w} × {dimensions[img.id].h}</div>)}
                       </div>
-                      <button onClick={(e) => handleDownload(e, img)} className="p-2.5 bg-white/10 hover:bg-emerald-500 text-white rounded-full backdrop-blur-md transition-all shadow-lg active:scale-95" title="تحميل الخلفية">
+                      <button onClick={(e) => handleDownload(e, img)} className={`p-2.5 bg-white/10 hover:bg-emerald-500 text-white rounded-full backdrop-blur-md transition-all shadow-lg active:scale-95 ${mainView === 'avatars' ? 'p-2 scale-90 md:scale-100 mx-auto' : ''}`} title="تحميل">
                         {isDownloading === img.id ? <div className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /> : <Download size={16} />}
                       </button>
                     </div>
-                    <p className="text-[11px] md:text-xs font-medium text-zinc-300 line-clamp-2 md:line-clamp-3 leading-snug drop-shadow-md pointer-events-auto">{img.story}</p>
+                    {mainView === 'wallpapers' && <p className="text-[11px] md:text-xs font-medium text-zinc-300 line-clamp-2 md:line-clamp-3 leading-snug drop-shadow-md pointer-events-auto">{img.story}</p>}
                   </div>
                 </div>
               </motion.div>
@@ -226,7 +248,7 @@ export default function Gallery() {
                   </div>
                   <button onClick={(e) => handleDownload(e, selectedImage)} disabled={isDownloading === selectedImage.id} className="flex items-center justify-center w-full md:w-auto gap-2 px-4 py-2 md:px-5 md:py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg md:rounded-xl transition-colors font-bold text-xs md:text-sm shadow-lg shadow-emerald-500/20 disabled:opacity-70 mt-1 md:mt-0">
                     {isDownloading === selectedImage.id ? <div className="w-4 h-4 md:w-5 md:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Download size={16} className="md:w-[18px] md:h-[18px]" />}
-                    <span>تحميل الخلفية</span>
+                    <span>{mainView === 'avatars' ? 'تحميل الأفتار' : 'تحميل الخلفية'}</span>
                   </button>
                 </div>
                 <div className="flex-1 text-xs md:text-sm font-medium text-zinc-300 bg-black/20 p-3 md:p-4 rounded-xl md:rounded-2xl border border-white/5 flex gap-2 md:gap-3 items-start w-full">
