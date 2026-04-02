@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Image as ImageIcon, Camera, LogOut, Plus, Pencil, Trash2, Search, Eye,
@@ -25,6 +25,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const [editingImage, setEditingImage] = useState<ImageItem | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [formUrl, setFormUrl] = useState('');
   const [formTitle, setFormTitle] = useState('');
   const [formCategory, setFormCategory] = useState('');
@@ -72,6 +73,33 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const handleDeleteImage = async (id: number) => {
     try { await api.deleteImage(id); notify('success', 'تم حذف الصورة'); setDeleteConfirm(null); fetchAll(); }
     catch { notify('error', 'فشل في حذف الصورة'); }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const res = await fetch('https://api.imgbb.com/1/upload?key=33cf12baa8c64bb847c81e49178e080b', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json() as any;
+      if (data.success) {
+        setFormUrl(data.data.url);
+        notify('success', 'تم رفع الصورة بنجاح');
+      } else {
+        notify('error', 'فشل في رفع الصورة');
+      }
+    } catch {
+      notify('error', 'خطأ في الاتصال بخادم الرفع');
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   // ── Category handlers ──
@@ -421,8 +449,14 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
 
               <div className="space-y-4">
                 <div>
-                  <label className="text-[11px] md:text-xs text-zinc-400 mb-1.5 block font-semibold">رابط الصورة</label>
-                  <input type="url" value={formUrl} onChange={(e) => setFormUrl(e.target.value)} placeholder="https://example.com/image.jpg" className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl px-4 py-3 text-[13px] text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all font-medium" dir="ltr" />
+                  <label className="text-[11px] md:text-xs text-zinc-400 mb-1.5 block font-semibold">رابط الصورة أو ارفع صورة</label>
+                  <div className="flex gap-2">
+                    <input type="url" value={formUrl} onChange={(e) => setFormUrl(e.target.value)} placeholder="https://example.com/image.jpg" className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl px-4 py-3 text-[13px] text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all font-medium" dir="ltr" />
+                    <label className="flex items-center justify-center bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-white px-4 rounded-xl cursor-pointer transition-colors shrink-0">
+                      {uploadingImage ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}
+                      <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" disabled={uploadingImage} />
+                    </label>
+                  </div>
                 </div>
                 {formUrl && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="overflow-hidden rounded-xl border border-white/[0.06]">
@@ -446,7 +480,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
               </div>
 
               <div className="flex items-center gap-2.5 mt-6">
-                <button onClick={handleSave} disabled={saving} className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 text-[13px] md:text-sm active:scale-[0.98]">
+                <button onClick={handleSave} disabled={saving || uploadingImage} className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 text-[13px] md:text-sm active:scale-[0.98]">
                   {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                   {editingImage ? 'حفظ التعديلات' : 'إضافة الصورة'}
                 </button>
