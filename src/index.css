@@ -5,6 +5,15 @@
   --font-sans: "Cairo", ui-sans-serif, system-ui, sans-serif;
 }
 
+@layer base {
+  html, body {
+    background-color: #050505;
+    margin: 0;
+    padding: 0;
+    overscroll-behavior: none;
+  }
+}
+
 @layer utilities {
   .no-scrollbar::-webkit-scrollbar {
     display: none;
