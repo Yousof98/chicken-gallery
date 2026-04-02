@@ -445,26 +445,25 @@ export default function Gallery() {
       {/* ═══ COMMENTS MODAL ═══ */}
       <AnimatePresence>
         {commentsImage && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }} className="fixed inset-0 z-[60] flex items-end md:items-center justify-center bg-black/80 backdrop-blur-xl" onClick={() => setCommentsImage(null)}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }} className="fixed inset-0 z-[60] flex items-end justify-center bg-black/80 backdrop-blur-xl" onClick={() => setCommentsImage(null)}>
 
             <motion.div
               initial={{ y: '100%', opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: '100%', opacity: 0 }}
               transition={{ type: 'spring', damping: 28, stiffness: 280 }}
-              className="relative w-full md:max-w-xl bg-[#0a0a0a] border border-white/10 rounded-t-[28px] md:rounded-[28px] flex flex-col overflow-hidden shadow-2xl"
-              style={{ maxHeight: '92dvh' }}
+              className="relative w-full h-full bg-[#0a0a0a] flex flex-col overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header with thumbnail */}
-              <div className="flex items-center gap-3 px-4 py-4 border-b border-white/[0.06] shrink-0 bg-[#0a0a0a]">
-                <button onClick={() => setCommentsImage(null)} className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors shrink-0 active:scale-95">
-                  <ChevronRight size={18} className="text-zinc-300" />
+              <div className="flex items-center gap-3 px-4 py-4 border-b border-white/[0.06] shrink-0 bg-[#0a0a0a] safe-top">
+                <button onClick={() => setCommentsImage(null)} className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors shrink-0 active:scale-95">
+                  <X size={18} className="text-zinc-300" />
                 </button>
-                <img src={commentsImage.url} alt={commentsImage.title} className="w-10 h-10 rounded-xl object-cover border border-white/10 shrink-0" />
+                <img src={commentsImage.url} alt={commentsImage.title} className="w-11 h-11 rounded-xl object-cover border border-white/10 shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-extrabold text-white truncate">{commentsImage.title}</h3>
-                  <p className="text-[11px] text-emerald-400 font-medium mt-0.5">
+                  <h3 className="text-base font-extrabold text-white truncate">{commentsImage.title}</h3>
+                  <p className="text-[12px] text-emerald-400 font-medium mt-0.5">
                     {loadingComments ? 'جاري التحميل...' : `${imageComments.length} تعليق`}
                   </p>
                 </div>
@@ -509,55 +508,62 @@ export default function Gallery() {
               {/* ═══ Profile Setup (shown if no profile) ═══ */}
               <AnimatePresence>
                 {showProfileSetup && (
-                  <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }} className="absolute inset-0 bg-[#0a0a0a] flex flex-col justify-center px-5 py-8 z-10">
-                    <div className="flex items-center gap-3 mb-6">
-                      <button onClick={() => setShowProfileSetup(false)} className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors active:scale-95">
+                  <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 28, stiffness: 280 }} className="absolute inset-0 bg-[#0a0a0a] flex flex-col overflow-y-auto z-10">
+                    {/* Profile setup header */}
+                    <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-white/[0.06] shrink-0">
+                      <button onClick={() => setShowProfileSetup(false)} className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors active:scale-95">
                         <ArrowRight size={18} className="text-zinc-300" />
                       </button>
                       <div>
-                        <h3 className="text-lg font-extrabold text-white">أخبرنا من أنت 👋</h3>
-                        <p className="text-[12px] text-zinc-500 mt-0.5">يُحفظ مرة واحدة فقط في متصفحك</p>
+                        <h3 className="text-base font-extrabold text-white">ملفك الشخصي 👋</h3>
+                        <p className="text-[11px] text-zinc-500 mt-0.5">يُحفظ مرة واحدة فقط في متصفحك</p>
                       </div>
                     </div>
 
+                    <div className="flex-1 px-5 py-6 space-y-6">
                     {/* Avatar preview */}
-                    <div className="flex flex-col items-center mb-6">
-                      <div className="w-20 h-20 rounded-full bg-zinc-800 border-2 border-white/10 overflow-hidden flex items-center justify-center mb-3">
-                        {profileDraft.avatar ? <img src={profileDraft.avatar} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display='none'; }} /> : <User className="w-8 h-8 text-zinc-500" />}
+                    <div className="flex flex-col items-center mb-2">
+                      <div className="w-24 h-24 rounded-full bg-zinc-800 border-2 border-emerald-500/30 overflow-hidden flex items-center justify-center mb-3 shadow-lg shadow-emerald-500/10">
+                        {profileDraft.avatar ? <img src={profileDraft.avatar} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display='none'; }} /> : <User className="w-10 h-10 text-zinc-500" />}
                       </div>
-                      <p className="text-[11px] text-zinc-500">صورتك الشخصية (معاينة)</p>
+                      <p className="text-[12px] text-zinc-500">صورتك الشخصية (معاينة)</p>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       <div>
-                        <label className="text-xs font-bold text-zinc-400 mb-1.5 block">الاسم الكريم *</label>
+                        <label className="text-sm font-bold text-zinc-300 mb-2 block">الاسم الكريم *</label>
                         <input
                           type="text"
                           placeholder="أدخل اسمك..."
                           value={profileDraft.name}
                           onChange={(e) => setProfileDraft(p => ({ ...p, name: e.target.value }))}
-                          className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/30 transition-all placeholder:text-zinc-600 font-bold"
+                          className="w-full bg-white/[0.04] border border-white/[0.08] rounded-2xl px-5 py-4 text-base text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/30 transition-all placeholder:text-zinc-600 font-bold"
                           autoFocus
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-zinc-400 mb-1.5 block">رابط صورتك الشخصية (اختياري)</label>
+                        <label className="text-sm font-bold text-zinc-300 mb-2 block">رابط صورتك الشخصية (اختياري)</label>
                         <input
                           type="url"
                           dir="ltr"
-                          placeholder="https://..."
+                          placeholder="https://i.ibb.co/..."
                           value={profileDraft.avatar}
                           onChange={(e) => setProfileDraft(p => ({ ...p, avatar: e.target.value }))}
-                          className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/30 transition-all placeholder:text-zinc-600 placeholder:text-right"
+                          className="w-full bg-white/[0.04] border border-white/[0.08] rounded-2xl px-5 py-4 text-base text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/30 transition-all placeholder:text-zinc-600"
                         />
-                        <p className="text-[10px] text-zinc-600 mt-1.5 leading-snug">ارفع صورتك على <a href="https://imgbb.com" target="_blank" className="text-emerald-500 underline">ImgBB</a> وألصق الرابط هنا</p>
+                        <p className="text-[11px] text-zinc-600 mt-2 leading-snug">ارفع صورتك على <a href="https://imgbb.com" target="_blank" className="text-emerald-500 underline">ImgBB</a> مجاناً وألصق الرابط هنا</p>
                       </div>
+                    </div>
+                    </div>
+
+                    {/* Save button */}
+                    <div className="px-5 pb-6 pt-3 shrink-0">
                       <button
                         onClick={handleSaveProfile}
                         disabled={!profileDraft.name.trim()}
-                        className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-50 text-white font-extrabold py-4 rounded-xl transition-all shadow-lg shadow-emerald-500/20 active:scale-[0.98] disabled:active:scale-100 mt-2"
+                        className="w-full flex items-center justify-center gap-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-50 text-white font-extrabold py-4 rounded-2xl transition-all shadow-xl shadow-emerald-500/20 active:scale-[0.98] disabled:active:scale-100 text-base"
                       >
-                        <Send size={16} /> حفظ والمتابعة للتعليق
+                        <Send size={18} /> حفظ والمتابعة للتعليق
                       </button>
                     </div>
                   </motion.div>
