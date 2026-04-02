@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform, useSpring } from 'motion/react';
 import { X, Image as ImageIcon, Quote, Download, Monitor, Smartphone, LayoutGrid, Maximize, ChevronDown, Loader2 } from 'lucide-react';
 import { api, type ImageItem, type SiteSettings, type CategoryItem } from './api';
