@@ -46,7 +46,7 @@ export const api = {
   },
   async login(password: string): Promise<boolean> {
     const res = await fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) });
-    const data = await res.json();
+    const data = await res.json() as { success: boolean };
     return data.success;
   },
   async getSettings(): Promise<SiteSettings> {
@@ -70,7 +70,7 @@ export const api = {
   },
   async addCategory(name: string): Promise<CategoryItem> {
     const res = await fetch('/api/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
-    if (!res.ok) { const e = await res.json(); throw new Error(e.error); }
+    if (!res.ok) { const e = await res.json() as { error: string }; throw new Error(e.error); }
     return res.json();
   },
   async deleteCategory(id: number): Promise<void> {
