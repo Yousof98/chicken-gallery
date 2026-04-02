@@ -94,10 +94,10 @@ export default function Gallery() {
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               {settings.site_subtitle}
             </div>
-            <h1 className="text-6xl md:text-9xl font-bold tracking-tighter leading-[1.1]">
+            <h1 className="text-5xl sm:text-6xl md:text-9xl font-bold tracking-tighter leading-[1.15] md:leading-[1.1]">
               قصة <span className="text-transparent bg-clip-text bg-gradient-to-b from-white to-white/40">{settings.site_title}</span>
             </h1>
-            <p className="text-zinc-300 text-lg md:text-2xl leading-relaxed font-medium max-w-3xl mx-auto px-4 md:px-0">{settings.site_description}</p>
+            <p className="text-zinc-300 text-base sm:text-lg md:text-2xl leading-relaxed font-medium max-w-3xl mx-auto px-4 md:px-0">{settings.site_description}</p>
           </motion.div>
         </div>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1, duration: 1 }} className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 text-zinc-500 z-10">
@@ -117,23 +117,27 @@ export default function Gallery() {
       </motion.header>
 
       {/* Filters - categories from Turso */}
-      <div className="sticky top-4 md:top-6 z-30 flex flex-col items-center gap-3 md:gap-4 mb-8 md:mb-16 px-4 md:px-6">
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.1 }} className="relative flex items-center p-1 md:p-1.5 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-full shadow-2xl">
+      <div className="sticky top-4 md:top-6 z-30 flex flex-col items-center gap-2.5 md:gap-4 mb-8 md:mb-16 w-full overflow-hidden">
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.1 }} className="relative flex items-center p-1 md:p-1.5 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-full shadow-2xl max-w-[90vw]">
           {[{ id: 'الكل', icon: LayoutGrid, label: 'الكل' }, { id: 'كمبيوتر', icon: Monitor, label: 'كمبيوتر' }, { id: 'هاتف', icon: Smartphone, label: 'هاتف' }].map(dev => (
-            <button key={dev.id} onClick={() => setDeviceFilter(dev.id)} className={`relative px-4 md:px-5 py-2 md:py-2.5 rounded-full text-xs md:text-sm font-bold transition-all duration-500 flex items-center gap-1.5 md:gap-2 ${deviceFilter === dev.id ? 'text-white' : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/5'}`}>
+            <button key={dev.id} onClick={() => setDeviceFilter(dev.id)} className={`relative px-3 sm:px-4 md:px-5 py-2 md:py-2.5 rounded-full text-[11px] sm:text-xs md:text-sm font-bold transition-all duration-500 flex items-center gap-1 sm:gap-1.5 md:gap-2 ${deviceFilter === dev.id ? 'text-white' : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/5'}`}>
               {deviceFilter === dev.id && <motion.div layoutId="activeDevice" className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 rounded-full" transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} />}
-              <dev.icon size={16} className="relative z-10" /><span className="relative z-10">{dev.label}</span>
+              <dev.icon size={14} className="relative z-10 md:w-4 md:h-4" /><span className="relative z-10">{dev.label}</span>
             </button>
           ))}
         </motion.div>
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2 }} className="relative flex items-center p-1 md:p-1.5 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-full shadow-2xl overflow-x-auto max-w-full hide-scrollbar w-full md:w-auto justify-start md:justify-center">
-          {categoryNames.map(cat => (
-            <button key={cat} onClick={() => setFilter(cat)} className="relative px-5 md:px-6 py-2 md:py-2.5 text-xs md:text-sm font-semibold rounded-full transition-colors z-10 whitespace-nowrap">
-              {filter === cat && <motion.div layoutId="activeFilter" className="absolute inset-0 bg-white rounded-full shadow-sm" transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} />}
-              <span className={`relative z-20 transition-colors duration-300 ${filter === cat ? 'text-black' : 'text-zinc-400 hover:text-zinc-200'}`}>{cat}</span>
-            </button>
-          ))}
-        </motion.div>
+        
+        {/* Categories scrollable in mobile */}
+        <div className="w-full overflow-x-auto hide-scrollbar px-4 sm:px-8 snap-x snap-mandatory flex justify-start md:justify-center">
+          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2 }} className="relative flex items-center p-1 md:p-1.5 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-full shadow-2xl inline-flex mx-auto min-w-min">
+            {categoryNames.map(cat => (
+              <button key={cat} onClick={() => setFilter(cat)} className="relative snap-center px-4 md:px-6 py-2 md:py-2.5 text-[11px] sm:text-xs md:text-sm font-semibold rounded-full transition-colors z-10 whitespace-nowrap">
+                {filter === cat && <motion.div layoutId="activeFilter" className="absolute inset-0 bg-white rounded-full shadow-sm" transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} />}
+                <span className={`relative z-20 transition-colors duration-300 ${filter === cat ? 'text-black' : 'text-zinc-400 hover:text-zinc-200'}`}>{cat}</span>
+              </button>
+            ))}
+          </motion.div>
+        </div>
       </div>
 
       {/* Gallery Grid */}
@@ -142,21 +146,19 @@ export default function Gallery() {
           <AnimatePresence mode="popLayout">
             {filteredImages.map((img, index) => (
               <motion.div layout initial={{ opacity: 0, y: 100, scale: 0.9 }} whileInView={{ opacity: 1, y: 0, scale: 1 }} viewport={{ once: true, margin: "-50px" }} exit={{ opacity: 0, scale: 0.9 }} transition={{ duration: 0.8, type: "spring", bounce: 0.3, delay: index % 4 * 0.1 }} key={img.id} className="relative group overflow-hidden rounded-2xl md:rounded-3xl cursor-zoom-in break-inside-avoid bg-zinc-900/50 border border-white/5 shadow-2xl mb-4 md:mb-6" onClick={() => setSelectedImage(img)}>
-                <motion.img layoutId={`img-${img.id}`} src={img.url} alt={img.title} onLoad={(e) => { const t = e.target as HTMLImageElement; setDimensions(p => ({ ...p, [img.id]: { w: t.naturalWidth, h: t.naturalHeight } })); }} className="w-full h-auto object-cover transition-all duration-1000 ease-[cubic-bezier(0.25,1,0.5,1)] md:group-hover:scale-110 md:group-hover:-rotate-1 md:group-hover:brightness-50 brightness-75 md:brightness-100" loading="lazy" />
-                <div className="absolute inset-0 flex flex-col justify-end p-3 md:p-4 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-500 ease-in-out">
-                  <div className="translate-y-0 md:translate-y-10 md:group-hover:translate-y-0 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]">
-                    <div className="bg-black/60 md:bg-black/40 backdrop-blur-xl border border-white/10 rounded-xl md:rounded-2xl p-3 md:p-5 shadow-2xl">
-                      <div className="flex justify-between items-start mb-1.5 md:mb-2">
-                        <div>
-                          <h3 className="text-base md:text-lg font-bold text-white">{img.title}</h3>
-                          {dimensions[img.id] && (<div className="flex items-center gap-1 mt-1 text-[9px] md:text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-1.5 md:px-2 py-0.5 rounded-md w-fit border border-emerald-500/20"><Maximize size={10} />{dimensions[img.id].w} × {dimensions[img.id].h}</div>)}
-                        </div>
-                        <button onClick={(e) => handleDownload(e, img)} className="p-1.5 md:p-2 bg-white/10 hover:bg-emerald-500/40 text-white rounded-full backdrop-blur-md transition-colors" title="تحميل الخلفية">
-                          {isDownloading === img.id ? <div className="w-3 h-3 md:w-4 md:h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Download size={14} className="md:w-4 md:h-4" />}
-                        </button>
+                <motion.img layoutId={`img-${img.id}`} src={img.url} alt={img.title} onLoad={(e) => { const t = e.target as HTMLImageElement; setDimensions(p => ({ ...p, [img.id]: { w: t.naturalWidth, h: t.naturalHeight } })); }} className="w-full h-auto object-cover transition-all duration-1000 ease-[cubic-bezier(0.25,1,0.5,1)] md:group-hover:scale-110 md:group-hover:-rotate-1 md:group-hover:brightness-75 brightness-90 md:brightness-100" loading="lazy" />
+                <div className="absolute inset-x-0 bottom-0 top-1/2 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-4 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-500 ease-in-out pointer-events-none">
+                  <div className="translate-y-0 md:translate-y-6 md:group-hover:translate-y-0 transition-transform duration-500 flex flex-col justify-end h-full">
+                    <div className="flex justify-between items-end mb-2 pointer-events-auto">
+                      <div>
+                        <h3 className="text-sm md:text-lg font-bold text-white mb-1 drop-shadow-md">{img.title}</h3>
+                        {dimensions[img.id] && (<div className="flex items-center gap-1 text-[9px] md:text-[10px] font-mono text-emerald-300 bg-emerald-500/20 px-1.5 py-0.5 rounded border border-emerald-500/30 backdrop-blur-md w-fit"><Maximize size={10} />{dimensions[img.id].w} × {dimensions[img.id].h}</div>)}
                       </div>
-                      <p className="text-[10px] md:text-xs font-medium text-zinc-300 line-clamp-1 md:line-clamp-2 leading-relaxed">{img.story}</p>
+                      <button onClick={(e) => handleDownload(e, img)} className="p-2.5 bg-white/10 hover:bg-emerald-500 text-white rounded-full backdrop-blur-md transition-all shadow-lg active:scale-95" title="تحميل الخلفية">
+                        {isDownloading === img.id ? <div className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /> : <Download size={16} />}
+                      </button>
                     </div>
+                    <p className="text-[11px] md:text-xs font-medium text-zinc-300 line-clamp-2 md:line-clamp-3 leading-snug drop-shadow-md pointer-events-auto">{img.story}</p>
                   </div>
                 </div>
               </motion.div>

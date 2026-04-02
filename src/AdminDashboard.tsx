@@ -208,8 +208,8 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
               <div className={`w-9 h-9 md:w-11 md:h-11 rounded-xl md:rounded-[14px] bg-gradient-to-br ${stat.gradient} flex items-center justify-center mb-3 shadow-lg ${stat.shadow} group-hover:scale-105 transition-transform`}>
                 <stat.icon className="w-4 h-4 md:w-5 md:h-5 text-white" />
               </div>
-              <p className="text-xl md:text-3xl font-extrabold text-white tracking-tight">{stat.value}</p>
-              <p className="text-[10px] md:text-xs text-zinc-500 mt-0.5 font-medium">{stat.label}</p>
+              <p className="text-[22px] sm:text-2xl md:text-3xl font-extrabold text-white tracking-tight">{stat.value}</p>
+              <p className="text-[10px] md:text-xs text-zinc-500 mt-0.5 md:mt-1 font-medium">{stat.label}</p>
             </motion.div>
           ))}
         </div>
@@ -397,8 +397,8 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
               initial={{ opacity: 0, y: 100 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 100 }}
-              transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
-              className="w-full md:max-w-lg bg-[#0d0d0d] border border-white/[0.06] rounded-t-[28px] md:rounded-[24px] p-5 md:p-8 shadow-2xl max-h-[90vh] overflow-y-auto"
+              transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
+              className="w-full max-w-none md:max-w-lg bg-[#0d0d0d] border border-white/[0.06] border-b-0 md:border-b rounded-t-[32px] md:rounded-[24px] p-6 md:p-8 shadow-[0_-20px_40px_-20px_rgba(0,0,0,0.6)] max-h-[88vh] overflow-y-auto pb-safe"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Drag handle for mobile */}
