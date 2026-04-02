@@ -21,7 +21,7 @@ export default function AdminLogin({ onLogin }: { onLogin: () => void }) {
   };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#050505] flex items-center justify-center px-4 py-8 relative overflow-hidden">
+    <div dir="rtl" className="min-h-[100dvh] bg-[#050505] flex items-center justify-center px-4 py-8 relative overflow-hidden">
       {/* Animated Background */}
       <div className="absolute inset-0 z-0 overflow-hidden">
         <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.08, 0.15, 0.08] }} transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }} className="absolute top-[20%] left-1/2 -translate-x-1/2 w-[500px] h-[500px] md:w-[700px] md:h-[700px] bg-emerald-600 blur-[180px] rounded-full" />

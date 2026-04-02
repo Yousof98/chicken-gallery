@@ -68,7 +68,7 @@ export default function Gallery() {
 
   if (loading || !settings) {
     return (
-      <div dir="rtl" className="min-h-screen bg-[#050505] flex items-center justify-center">
+      <div dir="rtl" className="min-h-[100dvh] bg-[#050505] flex items-center justify-center">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center gap-4">
           <Loader2 className="w-10 h-10 text-emerald-400 animate-spin" />
           <p className="text-zinc-400 text-lg font-medium">جاري تحميل المعرض...</p>
@@ -78,12 +78,12 @@ export default function Gallery() {
   }
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#050505] text-zinc-50 font-sans selection:bg-white/20 relative overflow-hidden">
+    <div dir="rtl" className="min-h-[100dvh] bg-[#050505] text-zinc-50 font-sans selection:bg-white/20 relative overflow-hidden">
       <motion.div className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-zinc-500 to-white origin-left z-50" style={{ scaleX }} />
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-zinc-800/20 blur-[120px] rounded-full pointer-events-none z-10" />
 
       {/* Story Section - uses settings from Turso */}
-      <motion.section style={{ y: storyY, opacity: storyOpacity }} className="relative min-h-screen flex flex-col items-center justify-center px-4 md:px-12 overflow-hidden z-0">
+      <motion.section style={{ y: storyY, opacity: storyOpacity }} className="relative min-h-[100dvh] flex flex-col items-center justify-center px-4 md:px-12 overflow-hidden z-0">
         <div className="absolute inset-0 z-0">
           <img src={settings.hero_image} alt={settings.site_title} className="w-full h-full object-cover opacity-30" />
           <div className="absolute inset-0 bg-gradient-to-b from-[#050505]/10 via-[#050505]/60 to-[#050505]" />

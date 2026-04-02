@@ -111,7 +111,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
 
   if (loading) {
     return (
-      <div dir="rtl" className="min-h-screen bg-[#060606] flex items-center justify-center">
+      <div dir="rtl" className="min-h-[100dvh] bg-[#060606] flex items-center justify-center">
         <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center gap-5">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-2xl shadow-emerald-500/30">
             <Loader2 className="w-8 h-8 text-white animate-spin" />
@@ -123,7 +123,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   }
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#060606] text-zinc-50 font-sans">
+    <div dir="rtl" className="min-h-[100dvh] bg-[#060606] text-zinc-50 font-sans">
       {/* ═══ NOTIFICATION ═══ */}
       <AnimatePresence>
         {notification && (
