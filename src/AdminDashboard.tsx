@@ -60,6 +60,44 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
+  // ── Live polling for real-time admin updates ──
+  const prevCommentsCount = React.useRef<number | null>(null);
+  const prevTotalLikes = React.useRef<number | null>(null);
+
+  useEffect(() => {
+    const poll = setInterval(async () => {
+      try {
+        const [newImgs, newCats, newComms] = await Promise.all([api.getImages(), api.getCategories(), api.getComments()]);
+
+        // Check for new comments
+        if (prevCommentsCount.current !== null && newComms.length > prevCommentsCount.current) {
+          const diff = newComms.length - prevCommentsCount.current;
+          const latest = newComms[newComms.length - 1];
+          if (latest && !latest.is_admin) {
+            notify('success', `💬 تعليق جديد من "${latest.author_name}": ${latest.content.substring(0, 40)}${latest.content.length > 40 ? '...' : ''}`);
+          }
+        }
+        prevCommentsCount.current = newComms.length;
+
+        // Check for like changes
+        const newTotal = newImgs.reduce((sum, img) => sum + (img.likes || 0), 0);
+        if (prevTotalLikes.current !== null && newTotal !== prevTotalLikes.current) {
+          const diff = newTotal - prevTotalLikes.current;
+          if (diff > 0) notify('success', `❤️ +${diff} إعجاب جديد`);
+          else if (diff < 0) notify('success', `💔 تم إزالة ${Math.abs(diff)} إعجاب`);
+        }
+        prevTotalLikes.current = newTotal;
+
+        // Update state silently
+        setImages(prev => JSON.stringify(prev) !== JSON.stringify(newImgs) ? newImgs : prev);
+        setCategories(prev => JSON.stringify(prev) !== JSON.stringify(newCats) ? newCats : prev);
+        setComments(prev => JSON.stringify(prev) !== JSON.stringify(newComms) ? newComms : prev);
+      } catch {}
+    }, 5000);
+
+    return () => clearInterval(poll);
+  }, []);
+
   // ── Comment handlers ──
   const handleDeleteComment = async (id: number) => {
     if (!confirm('هل أنت متأكد من حذف هذا التعليق؟')) return;
