@@ -67,7 +67,12 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   useEffect(() => {
     const poll = setInterval(async () => {
       try {
-        const [newImgs, newCats, newComms] = await Promise.all([api.getImages(), api.getCategories(), api.getComments()]);
+        const [newImgs, newCats, newComms, newSets] = await Promise.all([
+          api.getImages(), 
+          api.getCategories(), 
+          api.getComments(),
+          api.getAllSettings()
+        ]);
 
         // Check for new comments
         if (prevCommentsCount.current !== null && newComms.length > prevCommentsCount.current) {
@@ -92,6 +97,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         setImages(prev => JSON.stringify(prev) !== JSON.stringify(newImgs) ? newImgs : prev);
         setCategories(prev => JSON.stringify(prev) !== JSON.stringify(newCats) ? newCats : prev);
         setComments(prev => JSON.stringify(prev) !== JSON.stringify(newComms) ? newComms : prev);
+        setSettings(prev => JSON.stringify(prev) !== JSON.stringify(newSets) ? (newSets as SiteSettings) : prev);
       } catch {}
     }, 5000);
 

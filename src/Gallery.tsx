@@ -76,15 +76,41 @@ export default function Gallery() {
     Promise.all([api.getImages(), api.getCategories(), api.getSettings()])
       .then(([imgs, cats, sets]) => { setImages(imgs); setCategories(cats); setSettings(sets); setLoading(false); })
       .catch(() => setLoading(false));
+  }, []);
 
-    const interval = setInterval(() => {
-      Promise.all([api.getImages(), api.getCategories(), api.getSettings()])
-        .then(([newImgs, newCats, newSets]) => {
-          setImages(prev => JSON.stringify(prev) !== JSON.stringify(newImgs) ? newImgs : prev);
-          setCategories(prev => JSON.stringify(prev) !== JSON.stringify(newCats) ? newCats : prev);
-          setSettings(prev => JSON.stringify(prev) !== JSON.stringify(newSets) ? newSets : prev);
-        })
-        .catch(() => {});
+  // ── Continuous live sync every 5s ──
+  const commentsImageRef = React.useRef(commentsImage);
+  const selectedImageRef = React.useRef(selectedImage);
+  useEffect(() => { commentsImageRef.current = commentsImage; }, [commentsImage]);
+  useEffect(() => { selectedImageRef.current = selectedImage; }, [selectedImage]);
+
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const [newImgs, newCats, newSets] = await Promise.all([api.getImages(), api.getCategories(), api.getSettings()]);
+        setImages(prev => JSON.stringify(prev) !== JSON.stringify(newImgs) ? newImgs : prev);
+        setCategories(prev => JSON.stringify(prev) !== JSON.stringify(newCats) ? newCats : prev);
+        setSettings(prev => JSON.stringify(prev) !== JSON.stringify(newSets) ? newSets : prev);
+
+        // Sync selectedImage with latest data (likes count etc.)
+        if (selectedImageRef.current) {
+          const updated = newImgs.find(i => i.id === selectedImageRef.current!.id);
+          if (updated && JSON.stringify(updated) !== JSON.stringify(selectedImageRef.current)) {
+            setSelectedImage(updated);
+          }
+        }
+
+        // Live sync comments if comments modal is open
+        if (commentsImageRef.current) {
+          const freshComments = await api.getImageComments(commentsImageRef.current.id);
+          setImageComments(prev => JSON.stringify(prev) !== JSON.stringify(freshComments) ? freshComments : prev);
+          // Also sync the commentsImage data itself
+          const updatedImg = newImgs.find(i => i.id === commentsImageRef.current!.id);
+          if (updatedImg && JSON.stringify(updatedImg) !== JSON.stringify(commentsImageRef.current)) {
+            setCommentsImage(updatedImg);
+          }
+        }
+      } catch {}
     }, 5000);
 
     return () => clearInterval(interval);
