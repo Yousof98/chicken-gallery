@@ -78,8 +78,12 @@ export default function Gallery() {
       .catch(() => setLoading(false));
 
     const interval = setInterval(() => {
-      api.getSettings()
-        .then(newSets => setSettings(prev => JSON.stringify(prev) !== JSON.stringify(newSets) ? newSets : prev))
+      Promise.all([api.getImages(), api.getCategories(), api.getSettings()])
+        .then(([newImgs, newCats, newSets]) => {
+          setImages(prev => JSON.stringify(prev) !== JSON.stringify(newImgs) ? newImgs : prev);
+          setCategories(prev => JSON.stringify(prev) !== JSON.stringify(newCats) ? newCats : prev);
+          setSettings(prev => JSON.stringify(prev) !== JSON.stringify(newSets) ? newSets : prev);
+        })
         .catch(() => {});
     }, 5000);
 
