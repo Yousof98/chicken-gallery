@@ -40,6 +40,7 @@ export default function Gallery() {
   const [showProfileSetup, setShowProfileSetup] = useState(false);
   const [profileDraft, setProfileDraft] = useState({ name: '', avatar: '' });
   const [commentDraft, setCommentDraft] = useState('');
+  const [replyTo, setReplyTo] = useState<CommentItem | null>(null);
   const [submittingComment, setSubmittingComment] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -237,9 +238,11 @@ export default function Gallery() {
         author_name: visitorProfile.name,
         author_avatar: visitorProfile.avatar || undefined,
         content: commentDraft.trim(),
+        parent_id: replyTo?.id || null
       });
       setImageComments(p => [...p, newComment]);
       setCommentDraft('');
+      setReplyTo(null);
     } catch {
       alert('فشل إضافة التعليق. حاول مرة أخرى.');
     } finally {
@@ -543,25 +546,48 @@ export default function Gallery() {
                     <p className="text-sm text-zinc-600 mt-1">كن أول من يشارك رأيه!</p>
                   </div>
                 ) : (
-                  imageComments.map(comment => (
-                    <motion.div key={comment.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex gap-3 p-3 rounded-2xl border transition-all ${comment.is_admin ? 'bg-emerald-950/25 border-emerald-500/25 shadow-[0_0_12px_rgba(16,185,129,0.08)]' : 'bg-white/[0.03] border-white/[0.05]'}`}>
-                      <div className={`w-9 h-9 rounded-full overflow-hidden shrink-0 border flex items-center justify-center bg-zinc-900 ${comment.is_admin ? 'border-emerald-500/40' : 'border-white/10'}`}>
-                        {comment.author_avatar ? <img src={comment.author_avatar} alt={comment.author_name} className="w-full h-full object-cover" /> : <User className="w-4 h-4 text-zinc-500" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className={`font-extrabold text-[13px] ${comment.is_admin ? 'text-emerald-400' : 'text-zinc-100'}`}>{comment.author_name}</span>
-                          {comment.is_admin === 1 && (
-                            <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-                              <ShieldCheck size={9} /> مدير الموقع
-                            </span>
-                          )}
-                          <span className="text-[10px] text-zinc-600 flex items-center gap-0.5 mr-auto"><Clock size={9} />{new Date(comment.created_at).toLocaleDateString('ar-OM')}</span>
+                  imageComments.map(comment => {
+                    const parent = comment.parent_id ? imageComments.find(c => c.id === comment.parent_id) : null;
+                    return (
+                      <motion.div 
+                        key={comment.id} 
+                        initial={{ opacity: 0, y: 10 }} 
+                        animate={{ opacity: 1, y: 0 }} 
+                        className={`flex gap-3 p-3 rounded-2xl border transition-all ${comment.parent_id ? 'mr-6 bg-white/[0.015] border-white/[0.03]' : (comment.is_admin ? 'bg-emerald-950/25 border-emerald-500/25 shadow-[0_0_12px_rgba(16,185,129,0.08)]' : 'bg-white/[0.03] border-white/[0.05]')}`}
+                      >
+                        <div className={`w-8 h-8 rounded-full overflow-hidden shrink-0 border flex items-center justify-center bg-zinc-900 ${comment.is_admin ? 'border-emerald-500/40' : 'border-white/10'}`}>
+                          {comment.author_avatar ? <img src={comment.author_avatar} alt={comment.author_name} className="w-full h-full object-cover" /> : <User className="w-3.5 h-3.5 text-zinc-500" />}
                         </div>
-                        <p className={`text-[13px] leading-relaxed break-words ${comment.is_admin ? 'text-zinc-200' : 'text-zinc-400'}`}>{comment.content}</p>
-                      </div>
-                    </motion.div>
-                  ))
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className={`font-extrabold text-[12px] ${comment.is_admin ? 'text-emerald-400' : 'text-zinc-100'}`}>{comment.author_name}</span>
+                            {comment.is_admin === 1 && (
+                              <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[8px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                                <ShieldCheck size={8} /> مدير الموقع
+                              </span>
+                            )}
+                            <span className="text-[9px] text-zinc-600 flex items-center gap-0.5 mr-auto"><Clock size={8} />{new Date(comment.created_at).toLocaleDateString('ar-OM')}</span>
+                          </div>
+                          
+                          {parent && (
+                            <div className="text-[10px] text-zinc-500 mb-1.5 flex items-center gap-1 bg-white/[0.03] px-2 py-0.5 rounded-md w-fit">
+                              <Quote size={8} className="text-zinc-600 shrink-0" />
+                              <span className="truncate max-w-[120px]">رداً على <b>{parent.author_name}</b></span>
+                            </div>
+                          )}
+
+                          <p className={`text-[12px] leading-relaxed break-words ${comment.is_admin ? 'text-zinc-200' : 'text-zinc-400'}`}>{comment.content}</p>
+                          
+                          <button 
+                            onClick={() => { setReplyTo(comment); setTimeout(() => document.getElementById('comment-input')?.focus(), 10) }}
+                            className="text-[10px] font-bold text-emerald-500 hover:text-emerald-400 mt-2 flex items-center gap-1 active:scale-95 transition-all"
+                          >
+                            <MessageSquare size={10} /> رد
+                          </button>
+                        </div>
+                      </motion.div>
+                    );
+                  })
                 )}
                 <div ref={commentsEndRef} />
               </div>
@@ -626,30 +652,45 @@ export default function Gallery() {
               {/* Footer: comment input */}
               <div className="shrink-0 border-t border-white/[0.06] bg-[#0a0a0a] px-4 py-3">
                 {visitorProfile ? (
-                  <form onSubmit={handleSubmitComment} className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-zinc-800 border border-white/10 overflow-hidden shrink-0 flex items-center justify-center">
-                      {visitorProfile.avatar ? <img src={visitorProfile.avatar} alt="" className="w-full h-full object-cover" /> : <User className="w-4 h-4 text-zinc-500" />}
-                    </div>
-                    <div className="flex-1 relative">
-                      <input
-                        type="text"
-                        placeholder={`اكتب تعليقاً يا ${visitorProfile.name}...`}
-                        value={commentDraft}
-                        onChange={(e) => setCommentDraft(e.target.value)}
-                        className="w-full bg-white/[0.05] border border-white/[0.08] rounded-2xl px-4 py-3 pl-12 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/30 transition-all placeholder:text-zinc-600"
-                      />
-                      <button
-                        type="submit"
-                        disabled={submittingComment || !commentDraft.trim()}
-                        className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-white rounded-full flex items-center justify-center transition-all active:scale-90 shadow-md shadow-emerald-500/20"
-                      >
-                        {submittingComment ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} className="-rotate-90" />}
+                  <div className="flex flex-col gap-2">
+                    {replyTo && (
+                      <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                          <p className="text-[11px] text-emerald-400 font-bold truncate">أنت ترد على <span className="underline decoration-emerald-500/30 font-extrabold">{replyTo.author_name}</span></p>
+                        </div>
+                        <button onClick={() => setReplyTo(null)} className="p-1 text-emerald-500/60 hover:text-emerald-500 transition-colors">
+                          <X size={12} />
+                        </button>
+                      </motion.div>
+                    )}
+                    
+                    <form onSubmit={handleSubmitComment} className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-zinc-800 border border-white/10 overflow-hidden shrink-0 flex items-center justify-center pointer-events-none">
+                        {visitorProfile.avatar ? <img src={visitorProfile.avatar} alt="" className="w-full h-full object-cover" /> : <User className="w-4 h-4 text-zinc-500" />}
+                      </div>
+                      <div className="flex-1 relative">
+                        <input
+                          id="comment-input"
+                          type="text"
+                          placeholder={replyTo ? `اكتب ردك يا ${visitorProfile.name}...` : `اكتب تعليقاً يا ${visitorProfile.name}...`}
+                          value={commentDraft}
+                          onChange={(e) => setCommentDraft(e.target.value)}
+                          className="w-full bg-white/[0.05] border border-white/[0.08] rounded-2xl px-4 py-3 pl-12 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/30 transition-all placeholder:text-zinc-600"
+                        />
+                        <button
+                          type="submit"
+                          disabled={submittingComment || !commentDraft.trim()}
+                          className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-white rounded-full flex items-center justify-center transition-all active:scale-90 shadow-md shadow-emerald-500/20"
+                        >
+                          {submittingComment ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} className="-rotate-90" />}
+                        </button>
+                      </div>
+                      <button type="button" onClick={() => { setProfileDraft({ name: visitorProfile.name, avatar: visitorProfile.avatar }); setShowProfileSetup(true); }} className="p-2.5 rounded-full bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.06] transition-colors shrink-0" title="تعديل ملفك الشخصي">
+                        <User size={16} className="text-zinc-400" />
                       </button>
-                    </div>
-                    <button type="button" onClick={() => { setProfileDraft({ name: visitorProfile.name, avatar: visitorProfile.avatar }); setShowProfileSetup(true); }} className="p-2.5 rounded-full bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.06] transition-colors shrink-0" title="تعديل ملفك الشخصي">
-                      <User size={16} className="text-zinc-400" />
-                    </button>
-                  </form>
+                    </form>
+                  </div>
                 ) : (
                   <button
                     onClick={() => { setProfileDraft({ name: '', avatar: '' }); setShowProfileSetup(true); }}

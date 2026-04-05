@@ -11,6 +11,7 @@ export interface ImageItem {
 export interface CommentItem {
   id: number;
   image_id: number;
+  parent_id: number | null;
   author_name: string;
   author_avatar: string | null;
   content: string;
@@ -77,7 +78,7 @@ export const api = {
     if (!res.ok) throw new Error('Failed to fetch');
     return res.json();
   },
-  async addComment(imageId: number, data: { author_name: string; author_avatar?: string; content: string; is_admin?: boolean }): Promise<CommentItem> {
+  async addComment(imageId: number, data: { author_name: string; author_avatar?: string; content: string; is_admin?: boolean; parent_id?: number | null }): Promise<CommentItem> {
     const res = await fetch(`/api/images/${imageId}/comments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
     if (!res.ok) throw new Error('Failed to add comment');
     return res.json();

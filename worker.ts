@@ -26,6 +26,7 @@ async function ensureTables(env: Env) {
   // Simple migration strategy for adding likes column to existing DB
   try { await db.execute('ALTER TABLE images ADD COLUMN likes INTEGER DEFAULT 0'); } catch (e: any) {}
   try { await db.execute('ALTER TABLE comments ADD COLUMN is_admin INTEGER DEFAULT 0'); } catch (e: any) {}
+  try { await db.execute('ALTER TABLE comments ADD COLUMN parent_id INTEGER REFERENCES comments(id) ON DELETE CASCADE'); } catch (e: any) {}
 
   const catCount = await db.execute('SELECT COUNT(*) as count FROM categories');
   if (Number(catCount.rows[0].count) === 0) {
@@ -175,9 +176,12 @@ async function handleAPI(request: Request, env: Env): Promise<Response> {
     
     if (commentsForImgM && method === 'POST') {
       const imgId = Number(commentsForImgM[1]);
-      const { author_name, author_avatar, content, is_admin } = await request.json() as any;
+      const { author_name, author_avatar, content, is_admin, parent_id } = await request.json() as any;
       if (!author_name || !content) return json({ error: 'الاسم والتعليق مطلوبان' }, 400);
-      const r = await db.execute({ sql: 'INSERT INTO comments (image_id, author_name, author_avatar, content, is_admin) VALUES (?, ?, ?, ?, ?)', args: [imgId, author_name, author_avatar || null, content, is_admin ? 1 : 0] });
+      const r = await db.execute({ 
+        sql: 'INSERT INTO comments (image_id, author_name, author_avatar, content, is_admin, parent_id) VALUES (?, ?, ?, ?, ?, ?)', 
+        args: [imgId, author_name, author_avatar || null, content, is_admin ? 1 : 0, parent_id || null] 
+      });
       return json((await db.execute({ sql: 'SELECT * FROM comments WHERE id = ?', args: [r.lastInsertRowid!] })).rows[0], 201);
     }
 
