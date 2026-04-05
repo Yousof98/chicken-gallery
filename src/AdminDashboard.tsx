@@ -3,13 +3,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Image as ImageIcon, Camera, LogOut, Plus, Pencil, Trash2, Search, Eye,
   BarChart3, FolderOpen, Save, ShieldCheck, AlertTriangle, CheckCircle2, Loader2,
-  Settings, Tag, Lock, Menu, ChevronLeft, ImagePlus, Layers, RefreshCw, MessageSquare, Send, User
+  Settings, Tag, Lock, Menu, ChevronLeft, ImagePlus, Layers, RefreshCw, MessageSquare, Send, User, Clock
 } from 'lucide-react';
 import { api, type ImageItem, type CategoryItem, type SiteSettings, type CommentItem } from './api';
 import { uploadToImgBB } from './uploadUtils';
 import { useRef } from 'react';
 
-type AdminTab = 'images' | 'avatars' | 'categories' | 'settings' | 'comments' | 'account';
+type AdminTab = 'images' | 'avatars' | 'categories' | 'settings' | 'comments' | 'account' | 'bans';
 
 export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const [activeTab, setActiveTab] = useState<AdminTab>('images');
@@ -48,6 +48,10 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const [submittingReply, setSubmittingReply] = useState(false);
   const [selectedCommentIds, setSelectedCommentIds] = useState<number[]>([]);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [bans, setBans] = useState<any[]>([]);
+  const [banModal, setBanModal] = useState<{ isOpen: boolean; visitorId: string; authorName: string } | null>(null);
+  const [banDuration, setBanDuration] = useState<'24h' | '1w' | 'perm'>('24h');
+  const [isBanning, setIsBanning] = useState(false);
 
   const notify = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
@@ -56,8 +60,14 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
 
   const fetchAll = useCallback(async () => {
     try {
-      const [imgs, cats, sets, comms] = await Promise.all([api.getImages(), api.getCategories(), api.getAllSettings(), api.getComments()]);
-      setImages(imgs); setCategories(cats); setSettings(sets); setSettingsForm(sets as any); setComments(comms);
+      const [imgs, cats, sets, comms, currentBans] = await Promise.all([
+        api.getImages(), 
+        api.getCategories(), 
+        api.getAllSettings(), 
+        api.getComments(),
+        api.getBans()
+      ]);
+      setImages(imgs); setCategories(cats); setSettings(sets); setSettingsForm(sets as any); setComments(comms); setBans(currentBans);
       if (cats.length > 0 && !formCategory) setFormCategory(cats[0].name);
     } catch { notify('error', 'فشل في تحميل البيانات'); }
     finally { setLoading(false); }
@@ -72,11 +82,12 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   useEffect(() => {
     const poll = setInterval(async () => {
       try {
-        const [newImgs, newCats, newComms, newSets] = await Promise.all([
+        const [newImgs, newCats, newComms, newSets, newBans] = await Promise.all([
           api.getImages(),
           api.getCategories(),
           api.getComments(),
-          api.getAllSettings()
+          api.getAllSettings(),
+          api.getBans()
         ]);
 
         // Check for new comments
@@ -103,6 +114,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         setCategories(prev => JSON.stringify(prev) !== JSON.stringify(newCats) ? newCats : prev);
         setComments(prev => JSON.stringify(prev) !== JSON.stringify(newComms) ? newComms : prev);
         setSettings(prev => JSON.stringify(prev) !== JSON.stringify(newSets) ? (newSets as SiteSettings) : prev);
+        setBans(prev => JSON.stringify(prev) !== JSON.stringify(newBans) ? newBans : prev);
       } catch { }
     }, 5000);
 
@@ -137,6 +149,41 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
       fetchAll();
     } catch { notify('error', 'فشل إرسال الرد'); }
     finally { setSubmittingReply(false); }
+  };
+
+  const handleBanUser = async () => {
+    if (!banModal) return;
+    setIsBanning(true);
+    try {
+      let expiresAt: string | null = null;
+      const now = new Date();
+      if (banDuration === '24h') {
+        now.setHours(now.getHours() + 24);
+        expiresAt = now.toISOString();
+      } else if (banDuration === '1w') {
+        now.setDate(now.getDate() + 7);
+        expiresAt = now.toISOString();
+      }
+      
+      await api.banUser({ 
+        visitor_id: banModal.visitorId, 
+        author_name: banModal.authorName,
+        expires_at: expiresAt,
+        reason: 'حظر من الإدارة'
+      });
+      notify('success', `تم حظر ${banModal.authorName} بنجاح`);
+      setBanModal(null);
+      fetchAll();
+    } catch { notify('error', 'فشل عملية الحظر'); }
+    finally { setIsBanning(false); }
+  };
+
+  const handleUnbanUser = async (visitorId: string) => {
+    try {
+      await api.unbanUser(visitorId);
+      notify('success', 'تم تصفير الحظر بنجاح');
+      fetchAll();
+    } catch { notify('error', 'فشل تصفير الحظر'); }
   };
 
   const handleUpdateComment = async (c: CommentItem, newContent: string) => {
@@ -591,15 +638,33 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                       </div>
                       <div className="flex items-center gap-1">
                         {!c.is_admin && (
-                          <button onClick={() => { setReplyTo(c); setReplyDraft(''); }} className="p-1.5 text-emerald-400/60 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all" title="رد على التعليق">
-                            <MessageSquare size={14} />
-                          </button>
+                          <>
+                            <button onClick={() => { setReplyTo(c); setReplyDraft(''); }} className="p-1.5 text-emerald-400/60 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all" title="رد على التعليق">
+                              <MessageSquare size={14} />
+                            </button>
+                            {c.visitor_id && (
+                              <button 
+                                onClick={() => setBanModal({ isOpen: true, visitorId: c.visitor_id!, authorName: c.author_name })} 
+                                className={`p-1.5 rounded-lg transition-all ${c.is_banned ? 'text-red-500 bg-red-500/10' : 'text-zinc-500 hover:text-red-400 hover:bg-red-500/10'}`} 
+                                title={c.is_banned ? 'تعطيل الحظر' : 'حظر هذا المستخدم'}
+                                disabled={!!c.is_banned}
+                              >
+                                <ShieldCheck size={14} />
+                              </button>
+                            )}
+                          </>
                         )}
                         <button onClick={() => handleDeleteComment(c.id)} className="p-1.5 text-red-500/40 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all">
                           <Trash2 size={14} />
                         </button>
                       </div>
                     </div>
+                    
+                    {c.is_banned && (
+                      <div className="text-[10px] bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded-md flex items-center gap-1 w-fit font-bold italic mb-1">
+                        🚫 هذا المستخدم محظور حالياً
+                      </div>
+                    )}
 
                     <div className="bg-black/20 rounded-xl p-3 border border-white/[0.04]">
                       <div className="flex items-center gap-1.5 mb-1.5">
@@ -639,6 +704,57 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                 <div className="col-span-1 md:col-span-2 text-center py-16 text-zinc-500 flex flex-col items-center gap-3 bg-white/[0.02] border border-white/[0.05] rounded-3xl">
                   <MessageSquare className="w-12 h-12 opacity-20" />
                   <p className="text-lg font-medium text-zinc-400">لا توجد تعليقات حتى الآن</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* ═══ BANS TAB ═══ */}
+        {activeTab === 'bans' && (
+          <motion.div key="bans" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-extrabold text-white mb-1"><ShieldCheck className="inline-block w-5 h-5 ml-2 text-emerald-400" />إدارة المحظورين</h2>
+                <p className="text-sm text-zinc-500 font-medium">قائمة المستخدمين المحظورين حالياً من التعليق</p>
+              </div>
+              <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-xl">
+                 <span className="text-xs text-zinc-400 font-bold">إجمالي المحظورين: {bans.length}</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {bans.map(b => (
+                <div key={b.visitor_id} className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-4 flex flex-col gap-3 group hover:border-red-500/20 transition-all">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                        <User className="w-5 h-5 text-red-400" />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-bold text-white truncate max-w-[120px]">{b.author_name || 'مستخدم مجهول'}</h4>
+                        <p className="text-[10px] text-zinc-500">ID: {b.visitor_id.substring(0, 8)}...</p>
+                      </div>
+                    </div>
+                    <button onClick={() => handleUnbanUser(b.visitor_id)} className="p-2 text-zinc-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-all" title="إلغاء الحظر">
+                      <RefreshCw size={14} className="group-hover:rotate-180 transition-transform duration-500" />
+                    </button>
+                  </div>
+                  <div className="space-y-1.5 pt-2 border-t border-white/[0.04]">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-zinc-500 flex items-center gap-1"><Clock size={10} /> ينتهي في:</span>
+                      <span className="text-red-400 font-bold">{b.expires_at ? new Date(b.expires_at).toLocaleString('ar-OM') : 'دائم'}</span>
+                    </div>
+                    {b.reason && (
+                      <p className="text-[11px] text-zinc-400 italic">"{b.reason}"</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {bans.length === 0 && (
+                <div className="col-span-full py-16 text-center bg-white/[0.02] border border-white/[0.05] rounded-3xl text-zinc-500">
+                  <ShieldCheck className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                  <p>لا يوجد مستخدمون محظورون حالياً</p>
                 </div>
               )}
             </div>
@@ -822,6 +938,47 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ═══ BAN MODAL ═══ */}
+      <AnimatePresence>
+        {banModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setBanModal(null)} className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-[#0f0f0f] border border-white/10 rounded-[32px] p-8 w-full max-w-md relative z-10 shadow-2xl">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 rounded-3xl bg-red-500/10 flex items-center justify-center border border-red-500/20 mx-auto mb-4">
+                  <ShieldCheck className="w-8 h-8 text-red-400" />
+                </div>
+                <h2 className="text-xl font-extrabold text-white mb-2">حظر المستخدم</h2>
+                <p className="text-zinc-500 text-sm">سيتم حظر <b>{banModal.authorName}</b> من التعليق في المعرض</p>
+              </div>
+
+              <div className="space-y-4 mb-8">
+                <label className="text-[10px] uppercase tracking-wider text-zinc-500 font-bold px-1 block mb-2">مدة الحظر</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: '24h', label: '24 ساعة' },
+                    { id: '1w', label: 'أسبوع' },
+                    { id: 'perm', label: 'دائم' }
+                  ].map(d => (
+                    <button key={d.id} onClick={() => setBanDuration(d.id as any)} className={`py-3 rounded-2xl text-xs font-bold transition-all border ${banDuration === d.id ? 'bg-red-500 border-red-400 text-white shadow-lg shadow-red-500/20' : 'bg-white/5 border-white/10 text-zinc-400 hover:text-white'}`}>
+                      {d.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button onClick={() => setBanModal(null)} className="flex-1 py-4 rounded-2xl bg-white/5 text-white font-bold hover:bg-white/10 transition-all">إلغاء</button>
+                <button onClick={handleBanUser} disabled={isBanning} className="flex-[2] py-4 rounded-2xl bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-bold transition-all flex items-center justify-center gap-2 shadow-xl shadow-red-500/20 active:scale-95 disabled:opacity-50">
+                  {isBanning ? <Loader2 size={18} className="animate-spin" /> : <ShieldCheck size={18} />}
+                  تأكيد الحظر
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

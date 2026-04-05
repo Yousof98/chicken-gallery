@@ -12,12 +12,23 @@ export interface CommentItem {
   id: number;
   image_id: number;
   parent_id: number | null;
+  visitor_id: string | null;
   author_name: string;
   author_avatar: string | null;
   content: string;
   created_at: string;
   is_admin?: number;
+  is_banned?: number | boolean;
   image_title?: string; // only for admin view
+}
+
+export interface BanItem {
+  id: number;
+  visitor_id: string;
+  author_name: string | null;
+  expires_at: string | null;
+  reason: string | null;
+  created_at: string;
 }
 
 export interface CategoryItem {
@@ -78,7 +89,7 @@ export const api = {
     if (!res.ok) throw new Error('Failed to fetch');
     return res.json();
   },
-  async addComment(imageId: number, data: { author_name: string; author_avatar?: string; content: string; is_admin?: boolean; parent_id?: number | null }): Promise<CommentItem> {
+  async addComment(imageId: number, data: { author_name: string; author_avatar?: string; content: string; is_admin?: boolean; parent_id?: number | null; visitor_id?: string | null }): Promise<CommentItem> {
     const res = await fetch(`/api/images/${imageId}/comments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
     if (!res.ok) throw new Error('Failed to add comment');
     return res.json();
@@ -130,5 +141,20 @@ export const api = {
   async deleteCategory(id: number): Promise<void> {
     const res = await fetch(`/api/categories/${id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('Failed to delete');
+  },
+
+  // Bans
+  async getBans(): Promise<BanItem[]> {
+    const res = await fetch('/api/bans');
+    if (!res.ok) throw new Error('Failed to fetch bans');
+    return res.json();
+  },
+  async banUser(data: { visitor_id: string; author_name?: string; expires_at?: string | null; reason?: string }): Promise<void> {
+    const res = await fetch('/api/bans', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    if (!res.ok) throw new Error('Failed to ban user');
+  },
+  async unbanUser(visitorId: string): Promise<void> {
+    const res = await fetch(`/api/bans/${encodeURIComponent(visitorId)}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to unban user');
   },
 };

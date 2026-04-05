@@ -13,6 +13,16 @@ function getStoredProfile(): VisitorProfile | null {
   catch { return null; }
 }
 
+const VISITOR_ID_KEY = 'chicken_gallery_visitor_id';
+function getVisitorId(): string {
+  let id = localStorage.getItem(VISITOR_ID_KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(VISITOR_ID_KEY, id);
+  }
+  return id;
+}
+
 export default function Gallery() {
   const [images, setImages] = useState<ImageItem[]>([]);
   const [categories, setCategories] = useState<CategoryItem[]>([]);
@@ -43,6 +53,7 @@ export default function Gallery() {
   const [replyTo, setReplyTo] = useState<CommentItem | null>(null);
   const [submittingComment, setSubmittingComment] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const visitorId = useRef(getVisitorId());
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const commentImgInputRef = useRef<HTMLInputElement>(null);
 
@@ -238,13 +249,15 @@ export default function Gallery() {
         author_name: visitorProfile.name,
         author_avatar: visitorProfile.avatar || undefined,
         content: commentDraft.trim(),
-        parent_id: replyTo?.id || null
+        parent_id: replyTo?.id || null,
+        visitor_id: visitorId.current
       });
       setImageComments(p => [...p, newComment]);
       setCommentDraft('');
       setReplyTo(null);
-    } catch {
-      alert('فشل إضافة التعليق. حاول مرة أخرى.');
+    } catch (err: any) {
+      if (err.message?.includes('محظور')) alert(err.message);
+      else alert('فشل إضافة التعليق. حاول مرة أخرى.');
     } finally {
       setSubmittingComment(false);
     }
@@ -578,9 +591,16 @@ export default function Gallery() {
 
                           <p className={`text-[12px] leading-relaxed break-words ${comment.is_admin ? 'text-zinc-200' : 'text-zinc-400'}`}>{comment.content}</p>
                           
+                          {comment.is_banned && (
+                            <div className="mt-2 text-[10px] bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded-md flex items-center gap-1 w-fit font-bold">
+                              🚫 تم حظر هذا المستخدم من التعليق
+                            </div>
+                          )}
+
                           <button 
+                            disabled={!!comment.is_banned}
                             onClick={() => { setReplyTo(comment); setTimeout(() => document.getElementById('comment-input')?.focus(), 10) }}
-                            className="text-[10px] font-bold text-emerald-500 hover:text-emerald-400 mt-2 flex items-center gap-1 active:scale-95 transition-all"
+                            className={`text-[10px] font-bold text-emerald-500 hover:text-emerald-400 mt-2 flex items-center gap-1 active:scale-95 transition-all ${comment.is_banned ? 'opacity-30 pointer-events-none' : ''}`}
                           >
                             <MessageSquare size={10} /> رد
                           </button>
@@ -651,7 +671,14 @@ export default function Gallery() {
 
               {/* Footer: comment input */}
               <div className="shrink-0 border-t border-white/[0.06] bg-[#0a0a0a] px-4 py-3">
-                {visitorProfile ? (
+                {imageComments.some(c => c.visitor_id === visitorId.current && c.is_banned) ? (
+                   <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 text-center">
+                     <p className="text-red-400 text-sm font-bold flex items-center justify-center gap-2">
+                       🚫 تم حظرك من التعليق بواسطة الإدارة
+                     </p>
+                     <p className="text-red-500/60 text-[11px] mt-1">لا يمكنك كتابة تعليقات جديدة حالياً</p>
+                   </div>
+                ) : visitorProfile ? (
                   <div className="flex flex-col gap-2">
                     {replyTo && (
                       <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl">

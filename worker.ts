@@ -27,6 +27,8 @@ async function ensureTables(env: Env) {
   try { await db.execute('ALTER TABLE images ADD COLUMN likes INTEGER DEFAULT 0'); } catch (e: any) {}
   try { await db.execute('ALTER TABLE comments ADD COLUMN is_admin INTEGER DEFAULT 0'); } catch (e: any) {}
   try { await db.execute('ALTER TABLE comments ADD COLUMN parent_id INTEGER REFERENCES comments(id) ON DELETE CASCADE'); } catch (e: any) {}
+  try { await db.execute('ALTER TABLE comments ADD COLUMN visitor_id TEXT'); } catch (e: any) {}
+  await db.execute(`CREATE TABLE IF NOT EXISTS bans (id INTEGER PRIMARY KEY AUTOINCREMENT, visitor_id TEXT UNIQUE, author_name TEXT, expires_at DATETIME, reason TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
 
   const catCount = await db.execute('SELECT COUNT(*) as count FROM categories');
   if (Number(catCount.rows[0].count) === 0) {
@@ -166,23 +168,48 @@ async function handleAPI(request: Request, env: Env): Promise<Response> {
 
     // Comments endpoints
     if (path === '/api/comments' && method === 'GET') {
-      return json((await db.execute('SELECT c.*, i.title as image_title FROM comments c LEFT JOIN images i ON c.image_id = i.id ORDER BY c.id DESC')).rows);
+      const sql = `
+        SELECT c.*, i.title as image_title, 
+        EXISTS(SELECT 1 FROM bans b WHERE b.visitor_id = c.visitor_id AND (b.expires_at IS NULL OR b.expires_at > datetime('now'))) as is_banned 
+        FROM comments c 
+        LEFT JOIN images i ON c.image_id = i.id 
+        ORDER BY c.id DESC`;
+      return json((await db.execute(sql)).rows);
     }
     
     const commentsForImgM = path.match(/^\/api\/images\/(\d+)\/comments$/);
     if (commentsForImgM && method === 'GET') {
-      return json((await db.execute({ sql: 'SELECT * FROM comments WHERE image_id = ? ORDER BY id ASC', args: [Number(commentsForImgM[1])] })).rows);
+      const imgId = Number(commentsForImgM[1]);
+      const sql = `
+        SELECT c.*, 
+        EXISTS(SELECT 1 FROM bans b WHERE b.visitor_id = c.visitor_id AND (b.expires_at IS NULL OR b.expires_at > datetime('now'))) as is_banned
+        FROM comments WHERE image_id = ? ORDER BY id ASC`;
+      return json((await db.execute({ sql, args: [imgId] })).rows);
     }
     
     if (commentsForImgM && method === 'POST') {
       const imgId = Number(commentsForImgM[1]);
-      const { author_name, author_avatar, content, is_admin, parent_id } = await request.json() as any;
+      const { author_name, author_avatar, content, is_admin, parent_id, visitor_id } = await request.json() as any;
       if (!author_name || !content) return json({ error: 'الاسم والتعليق مطلوبان' }, 400);
+      
+      // Check for ban
+      if (visitor_id) {
+        const banCheck = await db.execute({ 
+          sql: "SELECT * FROM bans WHERE visitor_id = ? AND (expires_at IS NULL OR expires_at > datetime('now'))", 
+          args: [visitor_id] 
+        });
+        if (banCheck.rows.length > 0) return json({ error: 'أنت محظور من التعليق حالياً.' }, 403);
+      }
+
       const r = await db.execute({ 
-        sql: 'INSERT INTO comments (image_id, author_name, author_avatar, content, is_admin, parent_id) VALUES (?, ?, ?, ?, ?, ?)', 
-        args: [imgId, author_name, author_avatar || null, content, is_admin ? 1 : 0, parent_id || null] 
+        sql: 'INSERT INTO comments (image_id, author_name, author_avatar, content, is_admin, parent_id, visitor_id) VALUES (?, ?, ?, ?, ?, ?, ?)', 
+        args: [imgId, author_name, author_avatar || null, content, is_admin ? 1 : 0, parent_id || null, visitor_id || null] 
       });
-      return json((await db.execute({ sql: 'SELECT * FROM comments WHERE id = ?', args: [r.lastInsertRowid!] })).rows[0], 201);
+      return json((await db.execute({ 
+        sql: `SELECT c.*, EXISTS(SELECT 1 FROM bans b WHERE b.visitor_id = c.visitor_id AND (b.expires_at IS NULL OR b.expires_at > datetime('now'))) as is_banned 
+              FROM comments c WHERE c.id = ?`, 
+        args: [r.lastInsertRowid!] 
+      })).rows[0], 201);
     }
 
     const commentM = path.match(/^\/api\/comments\/(\d+)$/);
@@ -203,6 +230,25 @@ async function handleAPI(request: Request, env: Env): Promise<Response> {
       if (ids.length === 0) return json({ success: true });
       const placeholders = ids.map(() => '?').join(',');
       await db.execute({ sql: `DELETE FROM comments WHERE id IN (${placeholders})`, args: ids });
+      return json({ success: true });
+    }
+
+    // Ban endpoints
+    if (path === '/api/bans' && method === 'GET') {
+      return json((await db.execute("SELECT * FROM bans WHERE expires_at IS NULL OR expires_at > datetime('now')")).rows);
+    }
+    if (path === '/api/bans' && method === 'POST') {
+      const { visitor_id, author_name, expires_at, reason } = await request.json() as any;
+      if (!visitor_id) return json({ error: 'Visitor ID is required' }, 400);
+      await db.execute({ 
+        sql: 'INSERT OR REPLACE INTO bans (visitor_id, author_name, expires_at, reason) VALUES (?, ?, ?, ?)', 
+        args: [visitor_id, author_name || null, expires_at || null, reason || null] 
+      });
+      return json({ success: true });
+    }
+    const banM = path.match(/^\/api\/bans\/(.+)$/);
+    if (banM && method === 'DELETE') {
+      await db.execute({ sql: 'DELETE FROM bans WHERE visitor_id = ?', args: [decodeURIComponent(banM[1])] });
       return json({ success: true });
     }
 
