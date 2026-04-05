@@ -532,8 +532,9 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                             <span className="text-[10px] text-zinc-500 font-medium">{new Date(c.created_at).toLocaleDateString('ar-OM')}</span>
                           </div>
                           {parent && (
-                            <div className="text-[10px] text-zinc-500 mt-0.5 flex items-center gap-1">
-                              <RefreshCw size={8} className="rotate-180" /> رداً على <b>{parent.author_name}</b>
+                            <div className="text-[10px] text-zinc-500 mt-1.5 border-r-2 border-emerald-500/30 pr-2 py-0.5 bg-white/[0.02] rounded-l-md">
+                              <div className="font-extrabold text-emerald-500/70 mb-0.5">رد على {parent.author_name}</div>
+                              <div className="truncate max-w-[250px] opacity-70 italic">"{parent.content}"</div>
                             </div>
                           )}
                         </div>

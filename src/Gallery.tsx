@@ -570,9 +570,9 @@ export default function Gallery() {
                           </div>
                           
                           {parent && (
-                            <div className="text-[10px] text-zinc-500 mb-1.5 flex items-center gap-1 bg-white/[0.03] px-2 py-0.5 rounded-md w-fit">
-                              <Quote size={8} className="text-zinc-600 shrink-0" />
-                              <span className="truncate max-w-[120px]">رداً على <b>{parent.author_name}</b></span>
+                            <div className="text-[10px] text-zinc-500 mb-2 border-r-2 border-emerald-500/30 pr-2 py-0.5 bg-white/[0.02] rounded-l-md">
+                              <div className="font-extrabold text-emerald-500/70 mb-0.5">رد على {parent.author_name}</div>
+                              <div className="truncate max-w-[200px] opacity-70 italic">"{parent.content}"</div>
                             </div>
                           )}
 
