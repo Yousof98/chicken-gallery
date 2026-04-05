@@ -46,6 +46,8 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const [replyTo, setReplyTo] = useState<CommentItem | null>(null);
   const [replyDraft, setReplyDraft] = useState('');
   const [submittingReply, setSubmittingReply] = useState(false);
+  const [selectedCommentIds, setSelectedCommentIds] = useState<number[]>([]);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const notify = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
@@ -143,7 +145,30 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
       await api.updateComment(c.id, { author_name: c.author_name, author_avatar: c.author_avatar || '', content: newContent });
       notify('success', 'تم التعديل بنجاح');
       fetchAll();
-    } catch { notify('error', 'فشل התعديل'); }
+    } catch { notify('error', 'فشل التعديل'); }
+  };
+
+  const handleDeleteBulk = async () => {
+    if (selectedCommentIds.length === 0) return;
+    if (!confirm(`هل أنت متأكد من حذف ${selectedCommentIds.length} تعليق؟ سيتم أيضاً حذف أي ردود تابعة لها.`)) return;
+    
+    setIsBulkDeleting(true);
+    try {
+      await api.deleteComments(selectedCommentIds);
+      notify('success', `تم حذف ${selectedCommentIds.length} تعليق بنجاح`);
+      setComments(p => p.filter(c => !selectedCommentIds.includes(c.id)));
+      setSelectedCommentIds([]);
+    } catch { notify('error', 'فشل الحذف الجماعي'); }
+    finally { setIsBulkDeleting(false); }
+  };
+
+  const toggleSelectComment = (id: number) => {
+    setSelectedCommentIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedCommentIds.length === comments.length && comments.length > 0) setSelectedCommentIds([]);
+    else setSelectedCommentIds(comments.map(c => c.id));
   };
 
   // ── Image handlers ──
@@ -513,6 +538,23 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                 <h2 className="text-xl font-extrabold text-white mb-1"><MessageSquare className="inline-block w-5 h-5 ml-2 text-emerald-400" />إدارة التعليقات</h2>
                 <p className="text-sm text-zinc-500 font-medium">مراقبة وإدارة جميع تعليقات الزوار والرد عليها</p>
               </div>
+              
+              {comments.length > 0 && (
+                <div className="flex items-center gap-3">
+                  <button onClick={toggleSelectAll} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-zinc-400 hover:text-white transition-all text-xs font-bold">
+                    <input type="checkbox" checked={selectedCommentIds.length === comments.length && comments.length > 0} onChange={() => {}} className="accent-emerald-500 rounded" />
+                    تحديد الكل
+                  </button>
+                  <AnimatePresence>
+                    {selectedCommentIds.length > 0 && (
+                      <motion.button initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} onClick={handleDeleteBulk} disabled={isBulkDeleting} className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl transition-all text-xs font-bold active:scale-95 disabled:opacity-50">
+                        <Trash2 size={14} />
+                        {isBulkDeleting ? 'جاري الحذف...' : `حذف المحدد (${selectedCommentIds.length})`}
+                      </motion.button>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-max">
@@ -522,8 +564,16 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                   <motion.div key={c.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className={`bg-white/[0.02] border border-white/[0.06] rounded-2xl p-4 flex flex-col gap-3 group relative transition-all ${c.is_admin ? 'border-emerald-500/20 bg-emerald-500/[0.02]' : ''}`}>
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-3">
-                        <div className={`w-9 h-9 rounded-full bg-zinc-800 border flex items-center justify-center overflow-hidden ${c.is_admin ? 'border-emerald-500/30' : 'border-white/10'}`}>
-                          {c.author_avatar ? <img src={c.author_avatar} className="w-full h-full object-cover" alt="" /> : <User className="w-4 h-4 text-zinc-600" />}
+                        <div className="flex items-center gap-3">
+                          <input 
+                            type="checkbox" 
+                            checked={selectedCommentIds.includes(c.id)} 
+                            onChange={() => toggleSelectComment(c.id)}
+                            className="w-4 h-4 accent-emerald-500 rounded border-white/10 bg-white/5 cursor-pointer"
+                          />
+                          <div className={`w-9 h-9 rounded-full bg-zinc-800 border flex items-center justify-center overflow-hidden shrink-0 ${c.is_admin ? 'border-emerald-500/30' : 'border-white/10'}`}>
+                            {c.author_avatar ? <img src={c.author_avatar} className="w-full h-full object-cover" alt="" /> : <User className="w-4 h-4 text-zinc-600" />}
+                          </div>
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">

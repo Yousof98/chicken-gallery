@@ -197,6 +197,15 @@ async function handleAPI(request: Request, env: Env): Promise<Response> {
       if (method === 'DELETE') { await db.execute({ sql: 'DELETE FROM comments WHERE id = ?', args: [id] }); return json({ success: true }); }
     }
 
+    if (path === '/api/comments/delete-bulk' && method === 'POST') {
+      const { ids } = await request.json() as { ids: number[] };
+      if (!ids || !Array.isArray(ids)) return json({ error: 'IDs are required' }, 400);
+      if (ids.length === 0) return json({ success: true });
+      const placeholders = ids.map(() => '?').join(',');
+      await db.execute({ sql: `DELETE FROM comments WHERE id IN (${placeholders})`, args: ids });
+      return json({ success: true });
+    }
+
     return json({ error: 'Not found' }, 404);
   } catch (e: any) {
     console.error('API Error:', e);

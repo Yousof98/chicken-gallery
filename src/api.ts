@@ -92,6 +92,10 @@ export const api = {
     const res = await fetch(`/api/comments/${id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('Failed to delete comment');
   },
+  async deleteComments(ids: number[]): Promise<void> {
+    const res = await fetch('/api/comments/delete-bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) });
+    if (!res.ok) throw new Error('Failed to delete comments');
+  },
 
   // Auth
   async login(password: string): Promise<boolean> {
